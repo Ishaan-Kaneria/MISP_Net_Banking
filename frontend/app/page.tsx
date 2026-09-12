@@ -309,18 +309,25 @@ function Simulator({ onComplete }: { onComplete: () => void }) {
 function App() {
   const [data, setData] = useState<Dashboard | null>(null);
   const [authReady, setAuthReady] = useState(false);
+  const [authToken, setAuthToken] = useState<string | null>(null);
   const [view, setView] = useState('Overview');
   const [chat, setChat] = useState('');
   const [reply, setReply] = useState('');
   const [language, setLanguage] = useState('en');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [toast, setToast] = useState<{ title: string; message: string } | null>(null);
 
   const load = async () => {
     try {
+      setLoading(true);
+      setLoadError('');
       setData(await api<Dashboard>('/dashboard'));
-    } catch {
+    } catch (error) {
       localStorage.removeItem('arthai_token');
+      setAuthToken(null);
+      setData(null);
+      setLoadError(error instanceof Error ? error.message : 'Unable to load your account');
     } finally {
       setLoading(false);
     }
@@ -328,7 +335,9 @@ function App() {
 
   useEffect(() => {
     setAuthReady(true);
-    if (localStorage.getItem('arthai_token')) void load();
+    const token = localStorage.getItem('arthai_token');
+    setAuthToken(token);
+    if (token) void load();
     else setLoading(false);
   }, []);
 
@@ -342,8 +351,8 @@ function App() {
   }, [data?.alerts]);
 
   if (!authReady) return <main style={{ padding: 40 }}>Preparing your account...</main>;
-  if (!localStorage.getItem('arthai_token') && !data) return <Login onLogin={load} />;
-  if (loading || !data) return <main style={{ padding: 40 }}>Loading your account...</main>;
+  if (!authToken && !data) return <Login onLogin={() => { setAuthToken(localStorage.getItem('arthai_token')); void load(); }} />;
+  if (loading || !data) return <main className="loading-state"><div className="loading-spinner" /><strong>{loadError ? 'Your session needs attention' : 'Loading your account...'}</strong><p>{loadError || 'Connecting to your secure banking profile.'}</p>{loadError && <button onClick={() => { localStorage.removeItem('arthai_token'); setAuthToken(null); setLoadError(''); setLoading(false); }}>Return to sign in</button>}</main>;
 
   const dashboard = data;
   if (dashboard.user.kyc_status !== 'verified') return <Kyc onComplete={load} />;
