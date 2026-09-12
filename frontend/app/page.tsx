@@ -107,13 +107,6 @@ function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const showNotifications = () => {
-    const alert = data?.alerts[0];
-    setToast(alert
-      ? { title: alert.type === "fraud" ? "Payment protection alert" : "Account support update", message: alert.message_en }
-      : { title: "No new alerts", message: "Your account has no active security alerts." });
-  };
-
   if (!authReady) return <main className="p-10">Preparing your account...</main>;
   if (!authToken && !data) return <Login onLogin={() => { setAuthToken(localStorage.getItem("mispbank_token")); void load(); }} />;
   if (loading || !data) {
@@ -177,7 +170,7 @@ function App() {
       <section className="min-w-0 bg-paper">
         <Header
           view={view} viewLabel={viewLabel} copy={copy} language={language} setLanguage={setLanguage}
-          hasAlerts={dashboard.alerts.length > 0} onShowNotifications={showNotifications}
+          alerts={dashboard.alerts}
         />
         <div className="mx-auto max-w-3xl px-5 pb-20 pt-8 md:px-8">
           <div className="flex items-end justify-between gap-4">

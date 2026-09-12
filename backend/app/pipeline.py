@@ -76,7 +76,15 @@ def run_pipeline(db: Session, user_id: str, payload, *, force_post: bool = False
     user = db.get(User, user_id)
     history = list(db.scalars(select(Transaction).where(Transaction.user_id == user_id).order_by(Transaction.ts.desc()).limit(100)))
     previous = history[0] if history else None
-    account = db.scalar(select(Account).where(Account.user_id == user_id))
+    # with_for_update() locks this account row for the rest of the
+    # transaction (a no-op on SQLite, which has no row-level locking, but a
+    # real fix on Postgres): without it, two debits fired close enough
+    # together both read the same starting balance, both pass the
+    # insufficient-funds check against it, and both post -- overdrawing the
+    # account past zero despite that check existing. Rapidly repeating the
+    # safety simulator is exactly the kind of near-simultaneous request
+    # pattern that triggers this.
+    account = db.scalar(select(Account).where(Account.user_id == user_id).with_for_update())
     km = haversine_km(previous.lat, previous.lng, payload.lat, payload.lng) if previous else 0
     recent_debits = [t for t in history if t.direction == "debit" and comparable_time(t.ts) >= now - timedelta(minutes=2)]
     same_device = bool(user and user.device_id and payload.device_id == user.device_id)
@@ -112,15 +120,28 @@ def run_pipeline(db: Session, user_id: str, payload, *, force_post: bool = False
     all_transactions = history + [transaction]
     cutoff = now - timedelta(days=30)
     recent = [t for t in all_transactions if comparable_time(t.ts) >= cutoff and t.status == "posted"]
-    debits = sum(float(t.amount) for t in recent if t.direction == "debit")
-    credits = sum(float(t.amount) for t in recent if t.direction == "credit")
-    spend_7d = sum(float(t.amount) for t in recent if t.direction == "debit" and comparable_time(t.ts) >= now - timedelta(days=7))
+    # TOPUP (a Razorpay Add Money credit) is the user moving their own money
+    # into the account, not income -- counting it as "credits" here let a
+    # single top-up dominate savings_rate (e.g. add ₹50,000 with almost no
+    # other activity and the ratio reads as ~80% "savings", which then
+    # qualifies for SAVER-style investment offers moments after being
+    # overdrawn). Excluded from both sides so a top-up moves the balance
+    # (still handled above) without distorting the behavior signals at all.
+    behavioral = [t for t in recent if t.category != "TOPUP"]
+    debits = sum(float(t.amount) for t in behavioral if t.direction == "debit")
+    credits = sum(float(t.amount) for t in behavioral if t.direction == "credit")
+    spend_7d = sum(float(t.amount) for t in behavioral if t.direction == "debit" and comparable_time(t.ts) >= now - timedelta(days=7))
     feature = db.get(UserFeature, user_id) or UserFeature(user_id=user_id)
     feature.spend_7d, feature.spend_30d = Decimal(str(spend_7d)), Decimal(str(debits))
     feature.savings_rate = round((credits - debits) / max(credits, 1), 3)
     feature.salary_amt = Decimal(str(max([float(t.amount) for t in recent if t.category == "SALARY"] or [0])))
     feature.emi_count = sum(t.category == "EMI" for t in recent)
-    feature.night_txn_ratio = sum((t.ts.hour >= 22 or t.ts.hour < 5) for t in recent) / max(len(recent), 1)
+    # Localize to IST before checking the hour -- t.ts is stored in UTC, and
+    # comparing its raw .hour directly (as this used to) checks against UTC
+    # nighttime, not the user's actual local nighttime. is_night above
+    # already gets this right for the transaction just posted; this brings
+    # the same 30-day feature in line with it.
+    feature.night_txn_ratio = sum((comparable_time(t.ts).astimezone(ZoneInfo("Asia/Kolkata")).hour >= 22 or comparable_time(t.ts).astimezone(ZoneInfo("Asia/Kolkata")).hour < 5) for t in recent) / max(len(recent), 1)
     feature.unique_payees_7d = len({t.payee for t in recent if comparable_time(t.ts) >= now - timedelta(days=7)})
     feature.missed_emi_30d = 1 if missed_emi(all_transactions, now) else 0
     db.add(feature)

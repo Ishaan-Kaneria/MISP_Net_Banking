@@ -17,6 +17,34 @@ PERSONAS = [
 ]
 
 
+_BACKGROUND_MERCHANTS = [
+    ("Zepto", "UPI_GROCERY", 350), ("BigBasket", "UPI_GROCERY", 900),
+    ("Indian Oil", "FUEL", 1200), ("Shell Petrol", "FUEL", 1400),
+    ("Netflix", "ENTERTAINMENT", 199), ("BookMyShow", "ENTERTAINMENT", 600),
+    ("School Fees", "EDUCATION", 3500), ("Udemy", "EDUCATION", 799),
+    ("Local Store", "UNKNOWN", 250), ("Chemist", "UNKNOWN", 180),
+]
+
+
+def _seed_lived_in_history(db, user: User, *, months: int = 9) -> None:
+    """Extra months of ordinary weekly spend, dated *before* the 30-day
+    feature window every segment's story above is carefully tuned against
+    (35+ days ago) so it never changes a single classification outcome --
+    this only gives two things a real distribution to work with instead of
+    a handful of hand-placed rows: `amount_vs_typical` in app/ml/fraud.py
+    (the median of *all* prior posted debits, not just the last 30 days)
+    and the general "this account has actually been used for most of a
+    year" feel. Deliberately excludes category="EMI" so it can never
+    disturb pipeline.missed_emi()'s cadence detection for the personas that
+    depend on it.
+    """
+    now = datetime.now(timezone.utc)
+    for week in range(5, 5 + months * 4):
+        merchant, category, base = _BACKGROUND_MERCHANTS[week % len(_BACKGROUND_MERCHANTS)]
+        days_ago = 35 + week * 7
+        db.add(Transaction(user_id=user.id, amount=base + (week % 5) * 40, direction="debit", payee=merchant, category=category, device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.03))
+
+
 def _seed_saver_history(db, user: User) -> None:
     """Ramesh Shah — a genuine saver story: steady salary with spend kept
     well below it. This satisfies predict_segment()'s own deterministic
@@ -34,6 +62,8 @@ def _seed_saver_history(db, user: User) -> None:
         db.add(Transaction(user_id=user.id, amount=600 + days_ago * 5, direction="debit", payee="Zepto", category="UPI_GROCERY", device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.03))
     db.add(Transaction(user_id=user.id, amount=499, direction="debit", payee="Netflix", category="ENTERTAINMENT", device_id=user.device_id, ts=now - timedelta(days=10), status="posted", fraud_score=0.03))
 
+    _seed_lived_in_history(db, user)
+
 
 def _seed_medical_history(db, user: User) -> None:
     """Meena Iyer — genuine, recent hospital spend so predict_segment()'s own
@@ -49,6 +79,8 @@ def _seed_medical_history(db, user: User) -> None:
         db.add(Transaction(user_id=user.id, amount=amount, direction="debit", payee="Apollo Hospital", category="HOSPITAL", device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.03))
     for days_ago in range(0, 28, 5):
         db.add(Transaction(user_id=user.id, amount=450 + days_ago * 8, direction="debit", payee="Zepto", category="UPI_GROCERY", device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.03))
+
+    _seed_lived_in_history(db, user)
 
 
 def _seed_first_job_history(db, user: User) -> None:
@@ -70,6 +102,8 @@ def _seed_first_job_history(db, user: User) -> None:
         db.add(Transaction(user_id=user.id, amount=amount, direction="debit", payee="Zepto", category="UPI_GROCERY", device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.03))
     db.add(Transaction(user_id=user.id, amount=199, direction="debit", payee="Netflix", category="ENTERTAINMENT", device_id=user.device_id, ts=now - timedelta(days=7), status="posted", fraud_score=0.03))
 
+    _seed_lived_in_history(db, user)
+
 
 def _seed_marriage_history(db, user: User) -> None:
     """Fatima Sheikh — a big, recent wedding-related expense against a
@@ -89,6 +123,8 @@ def _seed_marriage_history(db, user: User) -> None:
     for days_ago, amount in ((18, 900), (11, 1200), (4, 850)):
         db.add(Transaction(user_id=user.id, amount=amount, direction="debit", payee="Zepto", category="UPI_GROCERY", device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.03))
 
+    _seed_lived_in_history(db, user)
+
 
 def _seed_high_velocity_history(db, user: User) -> None:
     """Karthik Subramaniam — frequent small payments to many distinct payees
@@ -105,6 +141,8 @@ def _seed_high_velocity_history(db, user: User) -> None:
                 "Book Store", "Pharmacy", "Bakery", "Parking App", "Streaming Service"]
     for index, merchant in enumerate(merchants):
         db.add(Transaction(user_id=user.id, amount=120 + index * 35, direction="debit", payee=merchant, device_id=user.device_id, ts=now - timedelta(days=index % 6, hours=index), status="posted", fraud_score=0.03))
+
+    _seed_lived_in_history(db, user)
 
 
 def _seed_baseline_history(db, user: User) -> None:
@@ -129,6 +167,8 @@ def _seed_baseline_history(db, user: User) -> None:
     # month with rent still spends a normal share of the salary.
     db.add(Transaction(user_id=user.id, amount=9000, direction="debit", payee="Rent", device_id=user.device_id, ts=now - timedelta(days=8), status="posted", fraud_score=0.03))
 
+    _seed_lived_in_history(db, user)
+
 
 def _seed_stress_history(db, user: User) -> None:
     """A genuine missed-EMI story the live pipeline can re-derive from real
@@ -147,6 +187,8 @@ def _seed_stress_history(db, user: User) -> None:
         db.add(Transaction(user_id=user.id, amount=amount, direction="credit", payee="Salary", category="SALARY", device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.04))
     for days_ago in range(0, 30, 2):
         db.add(Transaction(user_id=user.id, amount=900 + days_ago * 15, direction="debit", payee="Upi_grocery", category="UPI_GROCERY", device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.04))
+
+    _seed_lived_in_history(db, user)
 
 
 # Per-segment history builders and a matching initial UserFeature snapshot
