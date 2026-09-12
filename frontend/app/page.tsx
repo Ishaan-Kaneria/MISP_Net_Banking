@@ -357,47 +357,33 @@ function App() {
   };
 
   return (
-    <main className="app-grid">
+    <main className="bank-portal">
       {toast && <div className="toast" role="status"><span className="toast-icon"><Bell size={17} /></span><span><strong>{toast.title}</strong><small>{toast.message}</small></span><button aria-label="Dismiss alert" onClick={() => setToast(null)}><X size={16} /></button></div>}
-      <div className="shell">
-        <header className="topbar">
-          <div className="brand-lockup">
-            <span className="brand-icon"><ShieldCheck size={17} /></span><span>ARTH-AI</span><span className="brand-divider" /> <span className="brand-context">Personal banking</span>
-          </div>
-          <div className="top-actions">
-            <span className="secure-label"><ShieldCheck size={14} /> Secure session</span>
-            <span className="nav-link">EN / HI / GU</span>
-            <button className="signout" onClick={() => { localStorage.removeItem('arthai_token'); location.reload(); }}>Sign out</button>
-          </div>
-        </header>
-
-        <div className="dashboard-grid">
-          <section>
-            <div className="welcome-row"><div><p className="eyebrow">PERSONAL OVERVIEW</p><h1 className="bank-title">Good morning, {dashboard.user.name.split(' ')[0]}</h1><p className="welcome-copy">Here is your financial picture for today, shaped around your {dashboard.segment.toLowerCase().replace('_', ' ')} journey.</p></div><span className="date-stamp">12 September 2026</span></div>
-
-            <div className="balance-hero"><div><span className="balance-label">TOTAL AVAILABLE BALANCE</span><strong>{money(dashboard.balance)}</strong><p><span className="positive-dot" /> Your account is {dashboard.stress_flag ? 'under review for support' : 'in a stable position'}</p></div><div className="balance-meta"><span>Account ending</span><strong>•••• 0001</strong><span>Last updated just now</span></div></div>
-
-            <nav className="dashboard-nav">
-              {nav.map(({ label, icon: Icon }) => (
-                <button key={label} onClick={() => setView(label)} style={{ whiteSpace: 'nowrap', padding: '0 0 14px', border: 0, borderBottom: view === label ? '2px solid var(--teal)' : '2px solid transparent', background: 'transparent', color: view === label ? 'var(--teal)' : 'var(--muted)', fontWeight: 700, cursor: 'pointer', display: 'flex', gap: 7, alignItems: 'center' }}><Icon size={16} />{label}</button>
-              ))}
-            </nav>
-
+      <aside className="bank-sidebar">
+        <div className="sidebar-brand"><span className="brand-icon"><ShieldCheck size={17} /></span><span>ARTH<span>-</span>AI</span></div>
+        <div className="profile-mini"><span className="profile-avatar">{dashboard.user.name.slice(0, 1)}</span><span><strong>{dashboard.user.name}</strong><small>{dashboard.segment.replace('_', ' ')}</small></span></div>
+        <p className="side-label">YOUR BANKING</p>
+        <nav className="side-nav">
+          {nav.map(({ label, icon: Icon }) => <button className={view === label ? 'active' : ''} key={label} onClick={() => setView(label)}><Icon size={17} /><span>{label === 'Overview' ? 'Accounts overview' : label}</span>{view === label && <ChevronRight size={14} />}</button>)}
+        </nav>
+        <p className="side-label side-label-lower">SECURITY</p>
+        <div className="side-security"><ShieldCheck size={16} /><span><strong>Protected account</strong><small>Monitoring is active</small></span></div>
+        <button className="side-signout" onClick={() => { localStorage.removeItem('arthai_token'); location.reload(); }}>Sign out</button>
+      </aside>
+      <section className="bank-content">
+        <header className="bank-header"><div className="header-title"><span className="mobile-brand">ARTH-AI</span><span className="header-context">Personal banking / {view}</span></div><div className="header-actions"><button className="header-icon" aria-label="Notifications"><Bell size={17} />{dashboard.alerts.length > 0 && <i />}</button><span className="header-divider" /><span className="secure-label"><ShieldCheck size={14} /> Secure session</span><button className="language-display">EN / HI / GU</button></div></header>
+        <div className="content-inner">
+          <div className="portal-heading"><div><p className="eyebrow">PERSONAL OVERVIEW</p><h1 className="bank-title">Good morning, {dashboard.user.name.split(' ')[0]}</h1><p className="welcome-copy">Your money at a glance, with decisions shaped around your {dashboard.segment.toLowerCase().replace('_', ' ')} journey.</p></div><span className="date-stamp">12 September 2026</span></div>
+          {view === 'Overview' && <><div className="account-summary"><div className="summary-balance"><span className="balance-label">TOTAL AVAILABLE BALANCE</span><strong>{money(dashboard.balance)}</strong><p><span className="positive-dot" /> {dashboard.stress_flag ? 'Support mode is active' : 'Your account is in good standing'}</p></div><div className="summary-account"><span>PRIMARY SAVINGS</span><strong>•••• 0001</strong><small>Last updated just now</small></div><div className="summary-action"><button onClick={() => setView('Simulator')}><ArrowUpRight size={16} /> Simulate payment</button></div></div><div className="summary-metrics"><Metric label="Savings rate" value={`${Math.round((dashboard.features.savings_rate || 0) * 100)}%`} detail="30 day rhythm" /><Metric label="Monthly spend" value={money(dashboard.features.spend_30d || 0)} detail="Across essentials" /><Metric label="Payments watched" value={`${dashboard.transactions.length}`} detail="Recent activity" /></div></>}
+          <div className="workspace-view">
             {view === 'Overview' && <Overview data={dashboard} />}
-            {view === 'Offers' && <Offers data={dashboard} />}
-            {view === 'Alerts' && <Alerts data={dashboard} />}
             {view === 'Conversation' && <Conversation chat={chat} reply={reply} ask={ask} language={language} setLanguage={setLanguage} />}
             {view === 'Explain' && <Explain data={dashboard} />}
             {view === 'Simulator' && <Simulator onComplete={load} />}
-          </section>
-
-          <aside className="right-rail">
-            <div className="rail-account"><div className="rail-account-top"><span>ACCOUNT HEALTH</span><span className="health-dot" /></div><strong>{dashboard.stress_flag ? 'Support mode' : 'Looking good'}</strong><p>{dashboard.stress_flag ? 'We are keeping credit decisions paused while we protect your cash flow.' : 'Your spending and saving rhythm is currently stable.'}</p><div className="health-bar"><span style={{ width: dashboard.stress_flag ? '48%' : '78%' }} /></div></div>
-            <RailAlerts data={dashboard} />
-            <RailOffers data={dashboard} />
-          </aside>
+          </div>
         </div>
-      </div>
+      </section>
+      <aside className="bank-rail"><div className="rail-account"><div className="rail-account-top"><span>ACCOUNT HEALTH</span><span className="health-dot" /></div><strong>{dashboard.stress_flag ? 'Support mode' : 'Looking good'}</strong><p>{dashboard.stress_flag ? 'Credit decisions are paused while we protect your cash flow.' : 'Your spending and saving rhythm is currently stable.'}</p><div className="health-bar"><span style={{ width: dashboard.stress_flag ? '48%' : '78%' }} /></div></div><RailAlerts data={dashboard} /><RailOffers data={dashboard} /></aside>
     </main>
   );
 }
