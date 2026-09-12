@@ -26,14 +26,19 @@ function Login({ onLogin }: { onLogin: () => void }) {
   const [phone, setPhone] = useState("9000000001");
   const [pin, setPin] = useState("1234");
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const submit = async () => {
     try {
+      setSubmitting(true);
+      setError('');
       const result = await api<{ access_token: string }>('/auth/login', { method: 'POST', body: JSON.stringify({ phone, pin }) });
       localStorage.setItem('arthai_token', result.access_token);
       onLogin();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to sign in');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -47,7 +52,7 @@ function Login({ onLogin }: { onLogin: () => void }) {
         <label style={{ display: 'block', marginTop: 28, fontSize: 13, fontWeight: 700 }}>Mobile number<input value={phone} onChange={e => setPhone(e.target.value)} style={inputStyle} /></label>
         <label style={{ display: 'block', marginTop: 16, fontSize: 13, fontWeight: 700 }}>PIN<input value={pin} onChange={e => setPin(e.target.value)} type="password" style={inputStyle} /></label>
         {error && <p style={{ color: '#b34d4d', fontSize: 13 }}>{error}</p>}
-        <button onClick={submit} style={primaryButton}>Enter your account <ArrowUpRight size={18} /></button>
+        <button onClick={submit} disabled={submitting} style={{ ...primaryButton, opacity: submitting ? .65 : 1, cursor: submitting ? 'wait' : 'pointer' }}>{submitting ? 'Signing you in...' : 'Enter your account'} {!submitting && <ArrowUpRight size={18} />}</button>
         <p style={{ color: 'var(--muted)', fontSize: 12, textAlign: 'center', marginTop: 20 }}>Demo access: any seeded phone with PIN 1234</p>
       </section>
     </main>
@@ -152,22 +157,57 @@ function Alerts({ data }: { data: Dashboard }) {
   );
 }
 
-function Conversation({ chat, reply, ask }: { chat: string; reply: string; ask: (message: string) => void }) {
+function Conversation({ chat, reply, ask, language, setLanguage }: { chat: string; reply: string; ask: (message: string) => void; language: string; setLanguage: (language: string) => void }) {
+  const [message, setMessage] = useState('');
+  const suggestions = language === 'hi'
+    ? ['मेरा बैलेंस क्या है?', 'मेरे ऑफर दिखाएं', 'मुझे ग्रेस चाहिए', 'मेरी हाल की गतिविधि', 'भुगतान सुरक्षित है?']
+    : language === 'gu'
+      ? ['મારું બેલેન્સ શું છે?', 'મારી ઓફર્સ બતાવો', 'મને ગ્રેસ જોઈએ', 'મારી તાજેતરની પ્રવૃત્તિ', 'ચુકવણી સુરક્ષિત છે?']
+      : ['What is my balance?', 'Show my offers', 'I need grace', 'Recent activity', 'Is my payment safe?'];
+  const send = () => { if (message.trim()) { ask(message.trim()); setMessage(''); } };
   return (
     <div className="fade-up" style={{ marginTop: 28 }}>
       <div className="card" style={{ padding: 24, minHeight: 280 }}>
         <p style={{ color: 'var(--teal)', fontWeight: 700 }}>Arth-AI assistant</p>
         <h2 className="display" style={{ fontSize: 28 }}>A little clarity goes a long way.</h2>
+        <div style={{ display: 'flex', gap: 8, margin: '18px 0', flexWrap: 'wrap' }}>
+          {([['en', 'English'], ['hi', 'हिंदी'], ['gu', 'ગુજરાતી']] as const).map(([code, label]) => <button key={code} onClick={() => setLanguage(code)} style={{ ...choiceButton, flex: 'none', padding: '8px 12px', ...(language === code ? selectedChoice : {}) }}>{label}</button>)}
+        </div>
         {chat && <p style={{ textAlign: 'right', color: 'var(--teal)' }}>{chat}</p>}
         {reply && <p style={{ background: '#eef4ef', padding: 14, borderRadius: 8, lineHeight: 1.5 }}>{reply}</p>}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 30 }}>
-          {['What is my balance?', 'Show my offers', 'I need grace'].map(item => (
+          {suggestions.map(item => (
             <button key={item} onClick={() => ask(item)} style={{ border: '1px solid var(--line)', borderRadius: 999, background: 'white', padding: '9px 13px', color: 'var(--ink)', cursor: 'pointer' }}>{item}</button>
           ))}
+        </div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 22 }}>
+          <input value={message} onChange={event => setMessage(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') send(); }} placeholder="Ask about your money..." style={{ ...inputStyle, marginTop: 0 }} />
+          <button onClick={send} style={{ ...primaryButton, width: 'auto', marginTop: 0, whiteSpace: 'nowrap' }}>Send</button>
         </div>
       </div>
     </div>
   );
+}
+
+function Offers({ data }: { data: Dashboard }) {
+  const [accepted, setAccepted] = useState<string | null>(null);
+  const accept = async (id: string) => {
+    const result = await api<{ accepted: boolean; message?: string; reason?: string }>(`/offers/${id}/accept`, { method: 'POST' });
+    setAccepted(result.accepted ? `${id}: request recorded` : result.reason || 'This offer is paused for your protection.');
+  };
+  return <div className="fade-up" style={{ marginTop: 28 }}>
+    <div className="card" style={{ padding: 24 }}>
+      <p style={{ color: 'var(--teal)', fontWeight: 700, fontSize: 12, textTransform: 'uppercase' }}>Personalized support</p>
+      <h2 className="display" style={{ fontSize: 30 }}>Recommendations for your next move</h2>
+      <p style={{ color: 'var(--muted)', lineHeight: 1.5 }}>These recommendations are based on your recent activity and safety rules. Credit is never pushed when your cash flow is under stress.</p>
+      {data.offers.length ? data.offers.map(offer => <div key={offer.id} style={{ padding: '18px 0', borderBottom: '1px solid var(--line)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center' }}><strong style={{ fontSize: 18 }}>{offer.product_code.replace('_', ' ')}</strong><span style={{ color: offer.blocked_by_ethics ? '#b34d4d' : 'var(--teal)', fontSize: 12, fontWeight: 700 }}>{offer.blocked_by_ethics ? 'PAUSED BY ETHICS' : 'RECOMMENDED'}</span></div>
+        <p style={{ color: 'var(--muted)', lineHeight: 1.5 }}>{offer.reason}</p>
+        <button disabled={offer.blocked_by_ethics} onClick={() => void accept(offer.id)} style={{ border: '1px solid var(--teal)', borderRadius: 8, background: offer.blocked_by_ethics ? '#f1f1f1' : 'white', color: offer.blocked_by_ethics ? 'var(--muted)' : 'var(--teal)', padding: '9px 13px', cursor: offer.blocked_by_ethics ? 'not-allowed' : 'pointer' }}>{offer.blocked_by_ethics ? 'Unavailable right now' : 'Request support'}</button>
+      </div>) : <p style={{ color: 'var(--muted)' }}>No recommendations yet. Your next safe move will appear here.</p>}
+      {accepted && <p style={{ color: 'var(--teal)', fontWeight: 700, marginTop: 18 }}>{accepted}</p>}
+    </div>
+  </div>;
 }
 
 function Explain({ data }: { data: Dashboard }) {
@@ -251,6 +291,7 @@ function App() {
   const [view, setView] = useState('Overview');
   const [chat, setChat] = useState('');
   const [reply, setReply] = useState('');
+  const [language, setLanguage] = useState('en');
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
@@ -276,11 +317,11 @@ function App() {
   const dashboard = data;
   if (dashboard.user.kyc_status !== 'verified') return <Kyc onComplete={load} />;
 
-  const nav = [{ label: 'Overview', icon: LayoutDashboard }, { label: 'Alerts', icon: Bell }, { label: 'Conversation', icon: MessageCircle }, { label: 'Explain', icon: CircleHelp }, { label: 'Simulator', icon: Zap }];
+  const nav = [{ label: 'Overview', icon: LayoutDashboard }, { label: 'Offers', icon: WalletCards }, { label: 'Alerts', icon: Bell }, { label: 'Conversation', icon: MessageCircle }, { label: 'Explain', icon: CircleHelp }, { label: 'Simulator', icon: Zap }];
 
   const ask = async (message: string) => {
     setChat(message);
-    const result = await api<{ reply: string }>('/chat', { method: 'POST', body: JSON.stringify({ message, lang: dashboard.user.lang }) });
+    const result = await api<{ reply: string }>('/chat', { method: 'POST', body: JSON.stringify({ message, lang: language }) });
     setReply(result.reply);
   };
 
@@ -310,8 +351,9 @@ function App() {
             </nav>
 
             {view === 'Overview' && <Overview data={dashboard} />}
+            {view === 'Offers' && <Offers data={dashboard} />}
             {view === 'Alerts' && <Alerts data={dashboard} />}
-            {view === 'Conversation' && <Conversation chat={chat} reply={reply} ask={ask} />}
+            {view === 'Conversation' && <Conversation chat={chat} reply={reply} ask={ask} language={language} setLanguage={setLanguage} />}
             {view === 'Explain' && <Explain data={dashboard} />}
             {view === 'Simulator' && <Simulator onComplete={load} />}
           </section>

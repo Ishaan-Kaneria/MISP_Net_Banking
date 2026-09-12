@@ -123,21 +123,33 @@ def accept_offer(recommendation_id: str, authorization: str | None = Header(defa
 def chat(payload: ChatRequest, authorization: str | None = Header(default=None), db: Session = Depends(get_db)):
     user = current_user(authorization, db)
     score = db.get(UserScore, user.id)
+    language = payload.lang.lower()[:2]
+    message = payload.message.lower()
     db.add(ChatMessage(user_id=user.id, role="user", content=payload.message, lang=payload.lang))
     policy_context = retrieve(db, payload.message)
     traces = [f"rag:{document.source}" for document in policy_context]
-    if score and score.stress_flag and any(word in payload.message.lower() for word in ("loan", "credit", "लोन")):
-        reply = "Your credit request is paused while your cash flow is under stress. I can help request a 15-day grace period."
+    if score and score.stress_flag and any(word in message for word in ("loan", "credit", "लोन", "क्रेडिट", "લોન", "ક્રેડિટ")):
+        reply = {
+            "hi": "आपके नकदी प्रवाह पर दबाव है, इसलिए क्रेडिट अनुरोध अभी रोक दिया गया है। मैं 15 दिन की ग्रेस अवधि में मदद कर सकता हूं।",
+            "gu": "તમારા રોકડ પ્રવાહ પર દબાણ હોવાથી ક્રેડિટ વિનંતી હાલમાં રોકવામાં આવી છે. હું 15 દિવસની ગ્રેસ અવધિમાં મદદ કરી શકું છું.",
+        }.get(language, "Your credit request is paused while your cash flow is under stress. I can help request a 15-day grace period.")
         db.add(ChatMessage(user_id=user.id, role="assistant", content=reply, lang=payload.lang))
         db.commit()
         return {"reply": reply, "tool_traces": traces + ["ethics_gate: credit refused"]}
-    if any(word in payload.message.lower() for word in ("balance", "बैलेंस")):
+    if any(word in message for word in ("balance", "बैलेंस", "બેલેન્સ")):
         account = db.scalar(select(Account).where(Account.user_id == user.id))
-        reply = f"Your available balance is ₹{float(account.balance if account else 0):,.2f}."
+        balance = float(account.balance if account else 0)
+        reply = {
+            "hi": f"आपका उपलब्ध बैलेंस ₹{balance:,.2f} है।",
+            "gu": f"તમારું ઉપલબ્ધ બેલેન્સ ₹{balance:,.2f} છે.",
+        }.get(language, f"Your available balance is ₹{balance:,.2f}.")
         db.add(ChatMessage(user_id=user.id, role="assistant", content=reply, lang=payload.lang))
         db.commit()
         return {"reply": reply, "tool_traces": traces + ["get_balance"]}
-    reply = "I can help with your balance, offers, recent transactions, or a grace period."
+    reply = {
+        "hi": "मैं आपके बैलेंस, ऑफर, हाल की गतिविधि या ग्रेस अवधि में मदद कर सकता हूं।",
+        "gu": "હું તમારા બેલેન્સ, ઓફર્સ, તાજેતરની પ્રવૃત્તિ અથવા ગ્રેસ અવધિમાં મદદ કરી શકું છું.",
+    }.get(language, "I can help with your balance, offers, recent transactions, or a grace period.")
     model_reply = generate_reply(payload.message, payload.lang, "\n\n".join(document.content for document in policy_context), bool(score and score.stress_flag))
     if model_reply:
         reply = model_reply
