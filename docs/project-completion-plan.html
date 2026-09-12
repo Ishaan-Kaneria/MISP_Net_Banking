@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Arth-AI Project Completion Plan</title>
+<style>
+@page { size: A4; margin: 18mm 16mm; }
+:root { --ink:#182a3a; --muted:#586a73; --teal:#087f78; --gold:#c08b36; --line:#d9e2de; --soft:#eef5f1; }
+* { box-sizing:border-box; } body { color:var(--ink); font-family:Arial, sans-serif; line-height:1.45; font-size:10.5pt; }
+h1 { font-family:Georgia, serif; font-size:30pt; line-height:1.05; margin:0 0 8px; color:var(--ink); }
+h2 { font-family:Georgia, serif; font-size:18pt; margin:25px 0 8px; border-bottom:2px solid var(--teal); padding-bottom:4px; page-break-after:avoid; }
+h3 { color:var(--teal); font-size:12.5pt; margin:16px 0 5px; page-break-after:avoid; }
+p { margin:6px 0 9px; } ul, ol { margin-top:5px; padding-left:22px; } li { margin:3px 0; }
+.cover { border-top:10px solid var(--teal); padding-top:36px; margin-bottom:28px; } .eyebrow { color:var(--gold); font-weight:bold; letter-spacing:2px; text-transform:uppercase; font-size:10pt; }
+.meta { background:var(--soft); border-left:4px solid var(--teal); padding:12px 14px; margin:18px 0; }
+.callout { background:#f8faf8; border:1px solid var(--line); padding:12px 14px; margin:12px 0; } code { font-family:Consolas, monospace; font-size:9pt; background:#f0f3f1; padding:1px 3px; }
+pre { background:#182a3a; color:#f5f8f5; padding:11px 13px; border-radius:4px; overflow:hidden; font:8.5pt Consolas, monospace; white-space:pre-wrap; }
+table { width:100%; border-collapse:collapse; margin:8px 0 15px; } th { background:var(--ink); color:#fff; text-align:left; } th, td { border:1px solid var(--line); padding:7px 8px; vertical-align:top; } tr:nth-child(even) { background:#f5f8f6; }
+.footer { color:var(--muted); font-size:8.5pt; border-top:1px solid var(--line); margin-top:30px; padding-top:8px; }
+.page-break { page-break-before:always; }
+</style>
+</head>
+<body>
+<div class="cover"><div class="eyebrow">Hackathon delivery document</div><h1>Arth-AI<br><span style="color:#087f78">Project Completion Plan</span></h1><p style="font-size:14pt;color:#586a73">What is complete, what remains, and the exact path to a submission-ready build.</p><div class="meta"><b>Date:</b> 12 September 2026<br><b>Repository:</b> snehpatel05/HackOut-26<br><b>Branch:</b> main<br><b>Checkpoint:</b> c9bd102, Add Alembic database migrations</div></div>
+<h2>Executive Summary</h2><p>Arth-AI is a working hackathon vertical slice for hyper-personalized banking in Bharat. The repository contains a FastAPI backend, Next.js PWA, PostgreSQL/pgvector Docker stack, seeded personas, fraud scoring, life-stage classification, ethics rules, chat fallback, mock KYC, explainability, and a judge-facing transaction simulator.</p><p>The project is not yet submission-complete because the full stack has not been run on a machine with Node.js and Docker, and several production-grade requirements remain to be implemented or verified. The next milestone is runtime validation, followed by targeted completion of the missing architecture and quality gates.</p>
+<h2>Already Implemented</h2>
+<h3>Backend and API</h3><ul><li>FastAPI service, CORS, health endpoint, JWT login, seeded users, mock KYC and consent.</li><li>SQLAlchemy models for users, accounts, transactions, features, scores, recommendations, alerts, audits, KYC, chat messages, and policy documents.</li><li>Mock ledger, required API routes, Alembic environment, initial schema migration, and Docker migration startup.</li></ul>
+<h3>Fraud, ML, and Ethics</h3><ul><li>Merchant classification, India-time night detection, geo-jump, new-device, velocity, watchlist, and high-value rules.</li><li>IsolationForest anomaly scoring on synthetic normal data.</li><li>XGBoost life-stage classifier with fallback: FIRST_JOB, MARRIAGE, MEDICAL, STRESS, SAVER, HIGH_VELOCITY, BASELINE.</li><li>Stress detection, ethics gate, SIP, insurance, EMI conversion, starter credit, and grace-period recommendations.</li></ul>
+<h3>Chat and RAG</h3><ul><li>Persistent chat messages, policy corpus, lightweight retrieval, retrieval traces, optional Gemini integration, and safe fallback.</li></ul>
+<h3>Frontend and Demo</h3><ul><li>Next.js mobile-first PWA with login, KYC, dashboard, balance, activity, offers, alerts, chat, auditor view, and transaction simulator.</li><li>Dockerfiles, Compose configuration, manifest, environment examples, ignore files, and focused tests.</li></ul>
+<h2>Required Before Calling It Complete</h2>
+<h3>Priority 0: Runtime Setup and Smoke Test</h3><ol><li>Install Node.js 20 LTS and Docker Desktop.</li><li>Run <code>git pull origin main</code>.</li><li>Run <code>docker compose up --build</code>.</li><li>Verify the frontend, <code>/health</code>, <code>/docs</code>, login, KYC, dashboard, chat, explainability, and simulator.</li></ol>
+<h3>Priority 1: Fix Runtime Failures</h3><p>Resolve actual issues from the first run: PostgreSQL timing, Alembic/pgvector behavior, XGBoost installation, CORS, mobile layout, balance invariants, and seed idempotency.</p>
+<h3>Priority 2: Complete Data and ML Contracts</h3><ol><li>Add <code>VECTOR(768)</code>, pgvector extension, cosine indexes, embedding generation, and vector retrieval.</li><li>Add offline training that generates at least 2,000 users and 80,000 synthetic transactions.</li><li>Persist and version IsolationForest and XGBoost artifacts.</li></ol>
+<h3>Priority 3: Complete Chat Tools</h3><p>Implement server-side balance, offers, recent-transactions, and restructure tools. Ensure the model cannot write directly to the database, stressed users receive grace support only, and sensitive identity data never reaches the LLM.</p>
+<h3>Priority 4: Security Hardening</h3><ul><li>Consistent error contracts, transaction limits, balance invariants, rate limiting, secret validation, structured logging, admin authorization, and ownership checks.</li></ul>
+<h3>Priority 5: Testing</h3><p>Add API, seed, balance, fraud, ethics, explainability, chat fallback, Gemini timeout, Alembic, frontend build, and browser smoke tests.</p>
+<h3>Priority 6: Submission Polish</h3><p>Add a judge walkthrough, audit table, transaction details, real language switching, loading/error states, accessibility, PWA icons, responsive checks, and a final demo script.</p>
+<div class="page-break"></div>
+<h2>What You Need to Run</h2><h3>Docker</h3><pre>cd "C:\Users\Pranav Birajdar\OneDrive\Desktop\VS\Hackout26"
+git pull origin main
+docker compose up --build</pre><p>Open <code>http://localhost:3000</code>, API docs at <code>http://localhost:8000/docs</code>, and health at <code>http://localhost:8000/health</code>.</p><h3>Demo Login</h3><table><tr><th>User</th><th>Phone</th><th>PIN</th><th>Scenario</th></tr><tr><td>Ramesh Shah</td><td>9000000001</td><td>1234</td><td>Gujarati saver</td></tr><tr><td>Priya Verma</td><td>9000000002</td><td>1234</td><td>First job</td></tr><tr><td>Amit Kumar</td><td>9000000003</td><td>1234</td><td>Financial stress</td></tr><tr><td>Meena Iyer</td><td>9000000004</td><td>1234</td><td>Medical expense</td></tr></table><h3>Fraud Demonstration</h3><pre>Amount: 48000
+Payee: New city transfer
+Latitude: 28.61
+Longitude: 77.20
+Device ID: new-device
+Time: early morning</pre><p>Expected result: blocked before balance debit, with fraud explanation and alert.</p><h3>Local Development</h3><pre>cd backend
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+alembic upgrade head
+python -m app.seed
+python -m uvicorn app.main:app --reload --port 8000</pre><p>In a second terminal:</p><pre>cd frontend
+npm install
+npm run dev</pre><h2>Definition of Done</h2><ul><li>Compose starts database, API, and frontend without manual fixes.</li><li>Alembic creates the complete schema on a clean database.</li><li>All required routes and five demo stories work.</li><li>Fraud blocks the high-risk scenario before balance debit.</li><li>Stressed users receive grace support and no active personal-loan offer.</li><li>Chat is policy-grounded, persisted, and safe with or without Gemini.</li><li>Backend tests, browser tests, and frontend production build pass.</li><li>No secrets or real identity data are committed.</li><li>A judge can run the demo from the README alone.</li></ul><div class="callout"><b>Current decision point:</b> install Node.js 20 and Docker Desktop, run <code>docker compose up --build</code>, and use the first runtime output to drive the next fixes.</div><div class="footer">Arth-AI | Project Completion Plan | Generated from the repository checkpoint c9bd102</div>
+</body></html>

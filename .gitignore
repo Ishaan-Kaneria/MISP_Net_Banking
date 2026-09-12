@@ -1,5 +1,6 @@
 backend/.env
 backend/.venv/
+.venv/
 backend/arthai.db
 backend/__pycache__/
 backend/app/__pycache__/
