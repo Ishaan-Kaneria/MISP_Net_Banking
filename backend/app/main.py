@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from .config import settings
 from .db import Base, engine, get_db
-from .llm import generate_reply
+from .llm import generate_reply_with_status
 from .models import Account, Alert, AuditLog, ChatMessage, KycEvent, Recommendation, Transaction, User, UserFeature, UserScore
 from .rag.retrieve import retrieve
 from .pipeline import run_pipeline
@@ -146,15 +146,23 @@ def chat(payload: ChatRequest, authorization: str | None = Header(default=None),
         db.add(ChatMessage(user_id=user.id, role="assistant", content=reply, lang=payload.lang))
         db.commit()
         return {"reply": reply, "tool_traces": traces + ["get_balance"]}
+    lower_message = message
     reply = {
         "hi": "मैं आपके बैलेंस, ऑफर, हाल की गतिविधि या ग्रेस अवधि में मदद कर सकता हूं।",
         "gu": "હું તમારા બેલેન્સ, ઓફર્સ, તાજેતરની પ્રવૃત્તિ અથવા ગ્રેસ અવધિમાં મદદ કરી શકું છું.",
     }.get(language, "I can help with your balance, offers, recent transactions, or a grace period.")
-    model_reply = generate_reply(payload.message, payload.lang, "\n\n".join(document.content for document in policy_context), bool(score and score.stress_flag))
+    if any(word in lower_message for word in ("offer", "offers", "સૂચન", "ऑफर")):
+        reply = {"hi": "आपके खाते के लिए उपलब्ध सुझाव सुरक्षा नियमों के अनुसार दिखाए गए हैं। ऑफर टैब में हर सुझाव का कारण देखें।", "gu": "તમારા ખાતા માટેની ભલામણો સુરક્ષા નિયમો મુજબ બતાવવામાં આવી છે. દરેક કારણ જોવા માટે ભલામણો જુઓ."}.get(language, "Your available recommendations are selected using your account activity and safety rules. Open recommendations to see the reason for each one.")
+    elif any(word in lower_message for word in ("transaction", "payment", "भुगतान", "लेनदेन", "ચુકવણી")):
+        reply = {"hi": "आपकी हाल की गतिविधि में भुगतान, राशि और सुरक्षा स्थिति दिखाई जाती है। किसी संदिग्ध भुगतान को सुरक्षा जांच में भेजा जा सकता है।", "gu": "તમારી તાજેતરની પ્રવૃત્તિમાં ચુકવણી, રકમ અને સુરક્ષા સ્થિતિ દેખાય છે. શંકાસ્પદ ચુકવણી સુરક્ષા તપાસમાં જઈ શકે છે."}.get(language, "Your recent activity shows each payment, amount, and safety status. Suspicious payments may be sent for a safety check.")
+    elif any(word in lower_message for word in ("save", "saving", "emergency", "बचत", "आपात", "બચત")):
+        reply = {"hi": "आपकी बचत दर और 30 दिन के खर्च को साथ देखकर आपातकालीन निधि का लक्ष्य तय करना आसान होगा।", "gu": "તમારા બચત દર અને 30 દિવસના ખર્ચને સાથે જોઈને ઇમરજન્સી ફંડનું લક્ષ્ય નક્કી કરી શકાય છે."}.get(language, "Compare your savings rate with your 30-day spend, then set an emergency-fund target that fits your cash flow.")
+    model_reply, llm_status = generate_reply_with_status(payload.message, payload.lang, "\n\n".join(document.content for document in policy_context), bool(score and score.stress_flag))
     if model_reply:
         reply = model_reply
     db.add(ChatMessage(user_id=user.id, role="assistant", content=reply, lang=payload.lang))
     db.commit()
+    traces.append(f"llm:{llm_status}")
     return {"reply": reply, "tool_traces": traces}
 
 
