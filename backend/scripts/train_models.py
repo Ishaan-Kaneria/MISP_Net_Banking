@@ -108,7 +108,16 @@ def train() -> dict:
     train_mask = fraud_dates < cutoff_train
     valid_mask = (fraud_dates >= cutoff_train) & (fraud_dates < cutoff_valid)
     test_mask = fraud_dates >= cutoff_valid
-    fraud_model = RandomForestClassifier(n_estimators=320, max_features="sqrt", min_samples_leaf=2, class_weight="balanced_subsample", random_state=SEED, n_jobs=1)
+    # n_estimators=100, not the previously-shipped 320: profiling app/ml/fraud.py's
+    # per-transaction fraud_score() (see docs/PERFORMANCE.md) showed the forest's
+    # predict_proba() as the dominant cost of /txn — sklearn re-validates and
+    # dispatches once per tree, so latency scales ~linearly with tree count
+    # (320 trees ≈ 16.6ms/call; 100 ≈ 5.3ms). Held-out precision/recall/F1 at
+    # n=100 are bit-for-bit identical to n=320 and PR-AUC/ROC-AUC move by
+    # <0.001 — accuracy is unaffected here because this synthetic training
+    # frame's fraud rule is simple enough for the forest to fit well below 320
+    # trees; re-check both when the training data or targets change.
+    fraud_model = RandomForestClassifier(n_estimators=100, max_features="sqrt", min_samples_leaf=2, class_weight="balanced_subsample", random_state=SEED, n_jobs=1)
     fraud_model.fit(fraud_x[train_mask], fraud_y[train_mask])
     valid_prob = fraud_model.predict_proba(fraud_x[valid_mask])[:, 1]
     thresholds = np.linspace(0.05, 0.95, 181)

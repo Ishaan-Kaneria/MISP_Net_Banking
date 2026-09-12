@@ -22,7 +22,15 @@ app.add_middleware(CORSMiddleware, allow_origins=[x.strip() for x in settings.co
 
 @app.on_event("startup")
 def startup() -> None:
-    Base.metadata.create_all(engine)
+    # In production (Postgres) the Docker CMD already runs `alembic upgrade
+    # head` before uvicorn starts, so the schema is authoritative before this
+    # ever runs. `create_all` here would just re-issue a full table/column
+    # reflection round-trip to the DB on every single cold start (Render's
+    # free tier spins the service down between requests, so this happens
+    # often) for zero effect. Local/dev sqlite has no migration step, so it
+    # still needs create_all to bootstrap the schema; tests rely on this too.
+    if engine.dialect.name == "sqlite":
+        Base.metadata.create_all(engine)
     seed()
 
 
