@@ -21,9 +21,9 @@ const isView = (value: unknown): value is View => ['Overview', 'Offers', 'Conver
 const money = (value: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value);
 
 const translations = {
-  en: { overview: 'Accounts overview', conversation: 'Conversation', explain: 'Explainability', simulator: 'Safety simulator', personal: 'Personal overview', morning: 'Good morning', summary: 'Your money at a glance, with decisions shaped around your journey.', balance: 'Total available balance', stable: 'Your account is in good standing', support: 'Support mode is active', savings: 'Savings rate', spend: 'Monthly spend', payments: 'Payments watched', rhythm: '30 day rhythm', essentials: 'Across essentials', activity: 'Recent activity', recommendations: 'Recommendations', alerts: 'Security alerts', noAlerts: 'No active alerts. Your account is clear.', details: 'See recommendations', accountHealth: 'Account health', lookingGood: 'Looking good', supportMode: 'Support mode', signOut: 'Sign out', secure: 'Secure session', assistant: 'Arth-AI assistant', clarity: 'A little clarity goes a long way.', placeholder: 'Ask about your money...', send: 'Send', personalized: 'Personalized support', recommendationText: 'Recommendations based on recent activity and safety rules.', request: 'Request support', paused: 'Unavailable right now', audit: 'Auditor view', why: 'Why Arth-AI chose this path', simulatorTitle: 'Test the safety engine', simulatorText: 'Inject a UPI-like debit and watch the safety decision.', runCheck: 'Run safety check' },
-  hi: { overview: 'खाता सारांश', conversation: 'बातचीत', explain: 'स्पष्टीकरण', simulator: 'सुरक्षा सिम्युलेटर', personal: 'व्यक्तिगत सारांश', morning: 'सुप्रभात', summary: 'आपके सफर के अनुसार आपके पैसे का संक्षिप्त विवरण।', balance: 'कुल उपलब्ध बैलेंस', stable: 'आपका खाता अच्छी स्थिति में है', support: 'सहायता मोड सक्रिय है', savings: 'बचत दर', spend: 'मासिक खर्च', payments: 'देखे गए भुगतान', rhythm: '30 दिन की लय', essentials: 'आवश्यक खर्च', activity: 'हाल की गतिविधि', recommendations: 'सुझाव', alerts: 'सुरक्षा चेतावनी', noAlerts: 'कोई सक्रिय चेतावनी नहीं है।', details: 'सुझाव देखें', accountHealth: 'खाते की स्थिति', lookingGood: 'सब ठीक है', supportMode: 'सहायता मोड', signOut: 'साइन आउट', secure: 'सुरक्षित सत्र', assistant: 'अर्थ-AI सहायक', clarity: 'आइए आपके पैसों को थोड़ा आसान बनाते हैं।', placeholder: 'अपने पैसों के बारे में पूछें...', send: 'भेजें', personalized: 'व्यक्तिगत सहायता', recommendationText: 'हाल की गतिविधि और सुरक्षा नियमों पर आधारित सुझाव।', request: 'सहायता का अनुरोध', paused: 'अभी उपलब्ध नहीं', audit: 'ऑडिटर दृश्य', why: 'अर्थ-AI ने यह रास्ता क्यों चुना', simulatorTitle: 'सुरक्षा इंजन जांचें', simulatorText: 'UPI जैसा भुगतान डालकर सुरक्षा निर्णय देखें।', runCheck: 'सुरक्षा जांच चलाएं' },
-  gu: { overview: 'ખાતા ઝાંખી', conversation: 'વાતચીત', explain: 'સમજૂતી', simulator: 'સુરક્ષા સિમ્યુલેટર', personal: 'વ્યક્તિગત ઝાંખી', morning: 'સુપ્રભાત', summary: 'તમારી નાણાકીય મુસાફરી મુજબ તમારા પૈસાની ઝાંખી.', balance: 'કુલ ઉપલબ્ધ બેલેન્સ', stable: 'તમારું ખાતું સારી સ્થિતિમાં છે', support: 'સહાય મોડ સક્રિય છે', savings: 'બચત દર', spend: 'માસિક ખર્ચ', payments: 'ચકાસેલા ચુકવણીઓ', rhythm: '30 દિવસની લય', essentials: 'જરૂરી ખર્ચ', activity: 'તાજેતરની પ્રવૃત્તિ', recommendations: 'ભલામણો', alerts: 'સુરક્ષા ચેતવણીઓ', noAlerts: 'કોઈ સક્રિય ચેતવણી નથી.', details: 'ભલામણો જુઓ', accountHealth: 'ખાતાની સ્થિતિ', lookingGood: 'બધું સારું છે', supportMode: 'સહાય મોડ', signOut: 'સાઇન આઉટ', secure: 'સુરક્ષિત સત્ર', assistant: 'અર્થ-AI સહાયક', clarity: 'ચાલો તમારા પૈસાને સમજવામાં સરળ બનાવીએ.', placeholder: 'તમારા પૈસા વિશે પૂછો...', send: 'મોકલો', personalized: 'વ્યક્તિગત સહાય', recommendationText: 'તાજેતરની પ્રવૃત્તિ અને સુરક્ષા નિયમો પર આધારિત ભલામણો.', request: 'સહાય માંગો', paused: 'હાલ ઉપલબ્ધ નથી', audit: 'ઓડિટર દૃશ્ય', why: 'અર્થ-AI એ આ માર્ગ કેમ પસંદ કર્યો', simulatorTitle: 'સુરક્ષા એન્જિન તપાસો', simulatorText: 'UPI જેવું ચુકવણી દાખલ કરીને સુરક્ષા નિર્ણય જુઓ.', runCheck: 'સુરક્ષા તપાસ ચલાવો' },
+  en: { overview: 'Accounts overview', conversation: 'Conversation', explain: 'Explainability', simulator: 'Safety simulator', personal: 'Personal overview', morning: 'Good morning', summary: 'Your money at a glance, with decisions shaped around your journey.', balance: 'Total available balance', stable: 'Your account is in good standing', support: 'Support mode is active', savings: 'Savings rate', spend: 'Monthly spend', payments: 'Payments watched', rhythm: '30 day rhythm', essentials: 'Across essentials', activity: 'Recent activity', recommendations: 'Recommendations', alerts: 'Security alerts', noAlerts: 'No active alerts. Your account is clear.', details: 'See recommendations', accountHealth: 'Account health', lookingGood: 'Looking good', supportMode: 'Support mode', signOut: 'Sign out', secure: 'Secure session', assistant: 'Arth-AI assistant', clarity: 'A little clarity goes a long way.', placeholder: 'Ask about your money...', send: 'Send', thinking: 'Thinking...', personalized: 'Personalized support', recommendationText: 'Recommendations based on recent activity and safety rules.', request: 'Request support', paused: 'Unavailable right now', audit: 'Auditor view', why: 'Why Arth-AI chose this path', simulatorTitle: 'Test the safety engine', simulatorText: 'Inject a UPI-like debit and watch the safety decision.', runCheck: 'Run safety check' },
+  hi: { overview: 'खाता सारांश', conversation: 'बातचीत', explain: 'स्पष्टीकरण', simulator: 'सुरक्षा सिम्युलेटर', personal: 'व्यक्तिगत सारांश', morning: 'सुप्रभात', summary: 'आपके सफर के अनुसार आपके पैसे का संक्षिप्त विवरण।', balance: 'कुल उपलब्ध बैलेंस', stable: 'आपका खाता अच्छी स्थिति में है', support: 'सहायता मोड सक्रिय है', savings: 'बचत दर', spend: 'मासिक खर्च', payments: 'देखे गए भुगतान', rhythm: '30 दिन की लय', essentials: 'आवश्यक खर्च', activity: 'हाल की गतिविधि', recommendations: 'सुझाव', alerts: 'सुरक्षा चेतावनी', noAlerts: 'कोई सक्रिय चेतावनी नहीं है।', details: 'सुझाव देखें', accountHealth: 'खाते की स्थिति', lookingGood: 'सब ठीक है', supportMode: 'सहायता मोड', signOut: 'साइन आउट', secure: 'सुरक्षित सत्र', assistant: 'अर्थ-AI सहायक', clarity: 'आइए आपके पैसों को थोड़ा आसान बनाते हैं।', placeholder: 'अपने पैसों के बारे में पूछें...', send: 'भेजें', thinking: 'सोच रहा हूं...', personalized: 'व्यक्तिगत सहायता', recommendationText: 'हाल की गतिविधि और सुरक्षा नियमों पर आधारित सुझाव।', request: 'सहायता का अनुरोध', paused: 'अभी उपलब्ध नहीं', audit: 'ऑडिटर दृश्य', why: 'अर्थ-AI ने यह रास्ता क्यों चुना', simulatorTitle: 'सुरक्षा इंजन जांचें', simulatorText: 'UPI जैसा भुगतान डालकर सुरक्षा निर्णय देखें।', runCheck: 'सुरक्षा जांच चलाएं' },
+  gu: { overview: 'ખાતા ઝાંખી', conversation: 'વાતચીત', explain: 'સમજૂતી', simulator: 'સુરક્ષા સિમ્યુલેટર', personal: 'વ્યક્તિગત ઝાંખી', morning: 'સુપ્રભાત', summary: 'તમારી નાણાકીય મુસાફરી મુજબ તમારા પૈસાની ઝાંખી.', balance: 'કુલ ઉપલબ્ધ બેલેન્સ', stable: 'તમારું ખાતું સારી સ્થિતિમાં છે', support: 'સહાય મોડ સક્રિય છે', savings: 'બચત દર', spend: 'માસિક ખર્ચ', payments: 'ચકાસેલા ચુકવણીઓ', rhythm: '30 દિવસની લય', essentials: 'જરૂરી ખર્ચ', activity: 'તાજેતરની પ્રવૃત્તિ', recommendations: 'ભલામણો', alerts: 'સુરક્ષા ચેતવણીઓ', noAlerts: 'કોઈ સક્રિય ચેતવણી નથી.', details: 'ભલામણો જુઓ', accountHealth: 'ખાતાની સ્થિતિ', lookingGood: 'બધું સારું છે', supportMode: 'સહાય મોડ', signOut: 'સાઇન આઉટ', secure: 'સુરક્ષિત સત્ર', assistant: 'અર્થ-AI સહાયક', clarity: 'ચાલો તમારા પૈસાને સમજવામાં સરળ બનાવીએ.', placeholder: 'તમારા પૈસા વિશે પૂછો...', send: 'મોકલો', thinking: 'વિચારી રહ્યા છીએ...', personalized: 'વ્યક્તિગત સહાય', recommendationText: 'તાજેતરની પ્રવૃત્તિ અને સુરક્ષા નિયમો પર આધારિત ભલામણો.', request: 'સહાય માંગો', paused: 'હાલ ઉપલબ્ધ નથી', audit: 'ઓડિટર દૃશ્ય', why: 'અર્થ-AI એ આ માર્ગ કેમ પસંદ કર્યો', simulatorTitle: 'સુરક્ષા એન્જિન તપાસો', simulatorText: 'UPI જેવું ચુકવણી દાખલ કરીને સુરક્ષા નિર્ણય જુઓ.', runCheck: 'સુરક્ષા તપાસ ચલાવો' },
 } as const;
 type TranslationCopy = { [Key in keyof typeof translations.en]: string };
 
@@ -195,14 +195,24 @@ function RailActivity({ data, copy }: { data: Dashboard; copy: TranslationCopy }
   return <section className="rail-section activity-rail"><div className="rail-heading"><span><Clock3 size={15} /> {copy.activity}</span></div>{data.transactions.slice(0, 5).map(txn => <div className="activity-row" key={txn.id}><span className={txn.status === 'blocked' ? 'activity-icon blocked' : 'activity-icon'}>{txn.direction === 'debit' ? '−' : '+'}</span><span className="activity-name"><strong>{txn.payee}</strong><small>{txn.category}</small></span><strong className="activity-amount">{txn.direction === 'debit' ? '-' : '+'}{money(txn.amount)}</strong></div>)}</section>;
 }
 
-function Conversation({ chat, reply, ask, language, setLanguage, copy }: { chat: string; reply: string; ask: (message: string) => void; language: string; setLanguage: (language: string) => void; copy: TranslationCopy }) {
+function Conversation({ chat, reply, ask, language, setLanguage, copy }: { chat: string; reply: string; ask: (message: string) => Promise<void>; language: string; setLanguage: (language: string) => void; copy: TranslationCopy }) {
   const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
   const suggestions = language === 'hi'
     ? ['मेरा बैलेंस क्या है?', 'मेरे ऑफर दिखाएं', 'मुझे ग्रेस चाहिए', 'मेरी हाल की गतिविधि', 'भुगतान सुरक्षित है?']
     : language === 'gu'
       ? ['મારું બેલેન્સ શું છે?', 'મારી ઓફર્સ બતાવો', 'મને ગ્રેસ જોઈએ', 'મારી તાજેતરની પ્રવૃત્તિ', 'ચુકવણી સુરક્ષિત છે?']
       : ['What is my balance?', 'Show my offers', 'I need grace', 'Recent activity', 'Is my payment safe?'];
-  const send = () => { if (message.trim()) { ask(message.trim()); setMessage(''); } };
+  const send = async (nextMessage = message) => {
+    if (!nextMessage.trim() || sending) return;
+    setSending(true);
+    try {
+      await ask(nextMessage.trim());
+      setMessage('');
+    } finally {
+      setSending(false);
+    }
+  };
   return (
     <div className="fade-up" style={{ marginTop: 28 }}>
       <div className="card" style={{ padding: 24, minHeight: 280 }}>
@@ -215,12 +225,12 @@ function Conversation({ chat, reply, ask, language, setLanguage, copy }: { chat:
         {reply && <p style={{ background: '#e6eefc', padding: 14, borderRadius: 8, lineHeight: 1.5 }}>{reply}</p>}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 30 }}>
           {suggestions.map(item => (
-            <button key={item} onClick={() => ask(item)} style={{ border: '1px solid var(--line)', borderRadius: 999, background: 'white', padding: '9px 13px', color: 'var(--ink)', cursor: 'pointer' }}>{item}</button>
+            <button key={item} disabled={sending} onClick={() => void send(item)} style={{ border: '1px solid var(--line)', borderRadius: 999, background: 'white', padding: '9px 13px', color: 'var(--ink)', cursor: sending ? 'wait' : 'pointer', opacity: sending ? .6 : 1 }}>{item}</button>
           ))}
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 22 }}>
-          <input value={message} onChange={event => setMessage(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') send(); }} placeholder={copy.placeholder} style={{ ...inputStyle, marginTop: 0 }} />
-          <button onClick={send} style={{ ...primaryButton, width: 'auto', marginTop: 0, whiteSpace: 'nowrap' }}>{copy.send}</button>
+          <input value={message} disabled={sending} onChange={event => setMessage(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') void send(); }} placeholder={copy.placeholder} style={{ ...inputStyle, marginTop: 0 }} />
+          <button disabled={sending} onClick={() => void send()} style={{ ...primaryButton, width: 'auto', marginTop: 0, whiteSpace: 'nowrap', opacity: sending ? .65 : 1, cursor: sending ? 'wait' : 'pointer' }}>{sending ? copy.thinking : copy.send}</button>
         </div>
       </div>
     </div>
@@ -540,6 +550,14 @@ function App() {
     if (token) void load();
     else setLoading(false);
   }, []);
+
+  useEffect(() => {
+    if (data?.user.lang && ['en', 'hi', 'gu'].includes(data.user.lang)) setLanguage(data.user.lang);
+  }, [data?.user.lang]);
+
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
 
   useEffect(() => {
     window.history.replaceState({ ...(window.history.state || {}), arthaiView: 'Overview' }, '');
