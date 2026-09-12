@@ -343,6 +343,113 @@ function Explain({ data }: { data: Dashboard }) {
   );
 }
 
+type TopupConfig = { enabled: boolean; key_id: string | null; max_amount: number };
+
+declare global {
+  interface Window {
+    Razorpay?: new (options: Record<string, unknown>) => { open: () => void };
+  }
+}
+
+let razorpayScriptPromise: Promise<void> | null = null;
+function loadRazorpayScript(): Promise<void> {
+  if (typeof window === 'undefined') return Promise.resolve();
+  if (window.Razorpay) return Promise.resolve();
+  if (!razorpayScriptPromise) {
+    razorpayScriptPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('Could not load the payment widget. Check your connection and try again.'));
+      document.body.appendChild(script);
+    });
+  }
+  return razorpayScriptPromise;
+}
+
+function AddMoneyModal({ userName, onClose, onSuccess }: { userName: string; onClose: () => void; onSuccess: (message: string) => void }) {
+  const [config, setConfig] = useState<TopupConfig | null>(null);
+  const [amount, setAmount] = useState('2000');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    api<TopupConfig>('/wallet/topup/config').then(result => { if (!cancelled) setConfig(result); }).catch(() => { if (!cancelled) setConfig({ enabled: false, key_id: null, max_amount: 0 }); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const payWithRazorpay = async () => {
+    const value = Number(amount);
+    if (!Number.isFinite(value) || value <= 0) { setError('Enter a valid amount.'); return; }
+    setError('');
+    setSubmitting(true);
+    try {
+      const order = await api<{ order_id: string; amount: number; currency: string; key_id: string }>('/wallet/topup/order', { method: 'POST', body: JSON.stringify({ amount: value }) });
+      await loadRazorpayScript();
+      if (!window.Razorpay) throw new Error('Payment widget failed to load.');
+      const razorpay = new window.Razorpay({
+        key: order.key_id,
+        amount: order.amount,
+        currency: order.currency,
+        order_id: order.order_id,
+        name: 'Arth-AI',
+        description: 'Add money to your account',
+        prefill: { name: userName },
+        theme: { color: '#0b57b0' },
+        handler: (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
+          void (async () => {
+            try {
+              await api('/wallet/topup/verify', { method: 'POST', body: JSON.stringify(response) });
+              onSuccess(`₹${value.toLocaleString('en-IN')} added to your account.`);
+            } catch (err) {
+              setError(err instanceof Error ? err.message : 'Payment succeeded but could not be confirmed. Contact support.');
+            } finally {
+              setSubmitting(false);
+            }
+          })();
+        },
+        modal: { ondismiss: () => setSubmitting(false) },
+      });
+      razorpay.open();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not start the payment.');
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" role="dialog" aria-modal="true" onClick={onClose}>
+      <div className="card modal-card" onClick={event => event.stopPropagation()} style={{ padding: 28 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <p className="eyebrow" style={{ margin: 0 }}>ADD MONEY</p>
+            <h2 className="display" style={{ fontSize: 22, margin: '8px 0 0', color: 'var(--navy)' }}>Top up via Razorpay</h2>
+          </div>
+          <button aria-label="Close" onClick={onClose} style={{ border: 0, background: 'transparent', color: 'var(--muted)', cursor: 'pointer', padding: 4 }}><X size={20} /></button>
+        </div>
+
+        {config === null && <p style={{ color: 'var(--muted)', marginTop: 20 }}>Checking availability...</p>}
+
+        {config && !config.enabled && (
+          <p style={{ color: 'var(--muted)', lineHeight: 1.6, marginTop: 20 }}>Add Money isn&apos;t configured in this environment yet — it needs a Razorpay key on the server. Once that&apos;s added, this will let you top up your balance with a real (test-mode) payment.</p>
+        )}
+
+        {config && config.enabled && (
+          <>
+            <label style={{ display: 'block', marginTop: 20, fontSize: 13, fontWeight: 700 }}>Amount (INR)
+              <input value={amount} onChange={event => setAmount(event.target.value)} type="number" min={1} max={config.max_amount} style={inputStyle} />
+            </label>
+            <p style={{ color: 'var(--muted)', fontSize: 12, marginTop: 6 }}>Maximum ₹{config.max_amount.toLocaleString('en-IN')} per top-up.</p>
+            {error && <p role="alert" style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</p>}
+            <button onClick={() => void payWithRazorpay()} disabled={submitting} style={{ ...primaryButton, opacity: submitting ? .65 : 1, cursor: submitting ? 'wait' : 'pointer' }}>{submitting ? 'Opening secure checkout...' : `Pay ₹${amount || 0} with Razorpay`} {!submitting && <ArrowUpRight size={18} />}</button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function Simulator({ onComplete }: { onComplete: () => void }) {
   const [form, setForm] = useState({ amount: '48000', payee: 'New city transfer', lat: '28.61', lng: '77.20', device_id: 'new-device', ts: '' });
   const [result, setResult] = useState<{ status: string; fraud_score: number; category: string } | null>(null);
@@ -409,6 +516,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [toast, setToast] = useState<{ title: string; message: string } | null>(null);
+  const [showAddMoney, setShowAddMoney] = useState(false);
 
   const load = async () => {
     try {
@@ -477,6 +585,7 @@ function App() {
   return (
     <main className="bank-portal">
       {toast && <div className="toast" role="status"><span className="toast-icon"><Bell size={17} /></span><span><strong>{toast.title}</strong><small>{toast.message}</small></span><button aria-label="Dismiss alert" onClick={() => setToast(null)}><X size={16} /></button></div>}
+      {showAddMoney && <AddMoneyModal userName={dashboard.user.name} onClose={() => setShowAddMoney(false)} onSuccess={message => { setShowAddMoney(false); setToast({ title: 'Money added', message }); void load(); }} />}
       <aside className="bank-sidebar">
         <div className="sidebar-brand"><span className="brand-icon"><ShieldCheck size={17} /></span><span>ARTH<span>-</span>AI</span></div>
         <div className="profile-mini"><span className="profile-avatar">{dashboard.user.name.slice(0, 1)}</span><span><strong>{dashboard.user.name}</strong><small>{dashboard.segment.replaceAll('_', ' ')}</small></span></div>
@@ -492,7 +601,7 @@ function App() {
         <header className="bank-header"><div className="header-title"><span className="mobile-brand">ARTH-AI</span><span className="header-context">{copy.personal} / {view === 'Offers' ? copy.recommendations : nav.find(item => item.label === view)?.text}</span></div><div className="header-actions"><button className="header-icon" aria-label="Show notifications" onClick={showNotifications}><Bell size={17} />{dashboard.alerts.length > 0 && <i />}</button><span className="header-divider" /><span className="secure-label"><ShieldCheck size={14} /> {copy.secure}</span><div className="language-switcher">{(['en', 'hi', 'gu'] as const).map(code => <button className={language === code ? 'selected' : ''} key={code} onClick={() => setLanguage(code)}>{code.toUpperCase()}</button>)}</div></div></header>
         <div className="content-inner">
           <div className="portal-heading"><div>{view !== 'Overview' && <button className="back-button" onClick={() => navigate('Overview')}><ArrowLeft size={15} /> Back to overview</button>}<p className="eyebrow">{copy.personal.toUpperCase()}</p><h1 className="bank-title">{view === 'Overview' ? `${copy.morning}, ${dashboard.user.name.split(' ')[0]}` : view === 'Offers' ? copy.recommendations : nav.find(item => item.label === view)?.text}</h1><p className="welcome-copy">{view === 'Overview' ? copy.summary : 'Use the navigation or your browser back button to return to your account overview.'}</p></div><span className="date-stamp">12 September 2026</span></div>
-          {view === 'Overview' && <><div className="account-summary"><div className="summary-balance"><span className="balance-label">{copy.balance.toUpperCase()}</span><strong>{money(dashboard.balance)}</strong><p><span className="positive-dot" /> {dashboard.stress_flag ? copy.support : copy.stable}</p></div><div className="summary-account"><span>PRIMARY SAVINGS</span><strong>•••• 0001</strong><small>Last updated just now</small></div><div className="summary-action"><button onClick={() => navigate('Simulator')}><ArrowUpRight size={16} /> {copy.simulator}</button></div></div><div className="summary-metrics"><Metric label={copy.savings} value={`${Math.round((dashboard.features.savings_rate || 0) * 100)}%`} detail={copy.rhythm} /><Metric label={copy.spend} value={money(dashboard.features.spend_30d || 0)} detail={copy.essentials} /><Metric label={copy.payments} value={`${dashboard.transactions.length}`} detail={copy.activity} /></div></>}
+          {view === 'Overview' && <><div className="account-summary"><div className="summary-balance"><span className="balance-label">{copy.balance.toUpperCase()}</span><strong>{money(dashboard.balance)}</strong><p><span className="positive-dot" /> {dashboard.stress_flag ? copy.support : copy.stable}</p></div><div className="summary-account"><span>PRIMARY SAVINGS</span><strong>•••• 0001</strong><small>Last updated just now</small></div><div className="summary-action"><button onClick={() => setShowAddMoney(true)}><IndianRupee size={16} /> Add money</button><button onClick={() => navigate('Simulator')}><ArrowUpRight size={16} /> {copy.simulator}</button></div></div><div className="summary-metrics"><Metric label={copy.savings} value={`${Math.round((dashboard.features.savings_rate || 0) * 100)}%`} detail={copy.rhythm} /><Metric label={copy.spend} value={money(dashboard.features.spend_30d || 0)} detail={copy.essentials} /><Metric label={copy.payments} value={`${dashboard.transactions.length}`} detail={copy.activity} /></div></>}
           <div className="workspace-view">
             {view === 'Overview' && <Overview data={dashboard} copy={copy} onDetails={() => navigate('Offers')} />}
             {view === 'Offers' && <Offers data={dashboard} copy={copy} />}
