@@ -96,6 +96,7 @@ class AuditLog(Base):
     __tablename__ = "audit_logs"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    transaction_id: Mapped[str | None] = mapped_column(ForeignKey("transactions.id"), nullable=True, index=True)
     action: Mapped[str] = mapped_column(String(40))
     features: Mapped[dict] = mapped_column(JSON, default=dict)
     reasons: Mapped[list] = mapped_column(JSON, default=list)

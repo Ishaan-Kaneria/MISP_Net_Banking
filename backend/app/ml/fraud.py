@@ -27,9 +27,20 @@ _FRAUD_MODEL = joblib.load(MODEL_PATH) if MODEL_PATH.exists() else _model()
 _FRAUD_CLASSIFIER = joblib.load(CLASSIFIER_PATH) if CLASSIFIER_PATH.exists() else None
 
 
+# Both trained models were fit on debit-shaped behavior only (device/location/
+# velocity signals that describe money leaving an account), so they have no
+# notion of transaction direction. Retraining them on a direction feature is
+# out of scope here, so we apply a direction-aware calibration on top of the
+# raw model score instead of feeding direction into the model: incoming
+# credits are inherently lower fraud risk *to the receiving account* than
+# outgoing debits with the same device/location/velocity profile, since the
+# account holder isn't the one who could be losing money to a takeover.
+CREDIT_SCORE_DAMPENING = 0.35
+
+
 def fraud_score(*, amount: float, hour: int, is_night: bool, km_from_last: float, same_device: bool, velocity_2m: int,
                 amount_vs_typical: float = 1.0, balance_ratio: float = 0.0, is_new_payee: bool = False,
-                payee_frequency_30d: int = 0) -> float:
+                payee_frequency_30d: int = 0, direction: str = "debit") -> float:
     vector = np.array([[amount, np.log1p(amount), hour, int(is_night), km_from_last, int(same_device), velocity_2m,
                         amount_vs_typical, balance_ratio, int(is_new_payee), payee_frequency_30d]], dtype=float)
     if _FRAUD_CLASSIFIER is not None:
@@ -37,4 +48,6 @@ def fraud_score(*, amount: float, hour: int, is_night: bool, km_from_last: float
     else:
         decision = float(_FRAUD_MODEL.decision_function(vector)[0])
         score = 1.0 / (1.0 + np.exp(5.0 * decision))
+    if direction != "debit":
+        score *= CREDIT_SCORE_DAMPENING
     return round(float(np.clip(score, 0.0, 1.0)), 3)

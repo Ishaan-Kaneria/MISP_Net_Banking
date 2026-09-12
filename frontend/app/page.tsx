@@ -5,7 +5,7 @@ import { AlertCircle, ArrowLeft, ArrowUpRight, Bell, CheckCircle2, ChevronRight,
 import { api } from "../lib/api";
 
 type Dashboard = {
-  user: { name: string; lang: string; kyc_status: string };
+  user: { id: string; name: string; lang: string; kyc_status: string };
   balance: number;
   segment: string;
   stress_flag: boolean;
@@ -121,7 +121,7 @@ function Overview({ data, copy, onDetails }: { data: Dashboard; copy: Translatio
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <p style={{ color: 'var(--teal)', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em' }}>Made for this moment</p>
-            <h2 className="display" style={{ fontSize: 28, margin: '8px 0' }}>{data.offers[0]?.product_code?.replace('_', ' ') || 'Your next good move'}</h2>
+            <h2 className="display" style={{ fontSize: 28, margin: '8px 0' }}>{data.offers[0]?.product_code?.replaceAll('_', ' ') || 'Your next good move'}</h2>
             <p style={{ color: 'var(--muted)', maxWidth: 480 }}>{data.offers[0]?.reason || 'Keep exploring your account to discover useful support.'}</p>
           </div>
           <span style={{ padding: 14, color: 'var(--gold)', background: '#fbf2df', borderRadius: '50%' }}><IndianRupee size={25} /></span>
@@ -160,7 +160,7 @@ function RailOffers({ data, copy }: { data: Dashboard; copy: TranslationCopy }) 
     <div className="rail-heading"><span><TrendingUp size={15} /> {copy.recommendations}</span></div>
     {data.offers.length ? data.offers.slice(0, 3).map(offer => <div className="rail-offer" key={offer.id}>
       <span className="offer-mark"><IndianRupee size={15} /></span>
-      <span><strong>{offer.product_code.replace('_', ' ')}</strong><small>{offer.blocked_by_ethics ? 'Paused by safety rules' : offer.reason}</small></span>
+      <span><strong>{offer.product_code.replaceAll('_', ' ')}</strong><small>{offer.blocked_by_ethics ? 'Paused by safety rules' : offer.reason}</small></span>
       <ChevronRight size={15} />
     </div>) : <div className="rail-empty"><Clock3 size={17} /><span>Recommendations will appear as your account evolves.</span></div>}
   </section>;
@@ -224,7 +224,7 @@ function Offers({ data, copy }: { data: Dashboard; copy: TranslationCopy }) {
       <h2 className="display" style={{ fontSize: 30 }}>{copy.recommendations}</h2>
       <p style={{ color: 'var(--muted)', lineHeight: 1.5 }}>{copy.recommendationText}</p>
       {data.offers.length ? data.offers.map(offer => <div key={offer.id} style={{ padding: '18px 0', borderBottom: '1px solid var(--line)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center' }}><strong style={{ fontSize: 18 }}>{offer.product_code.replace('_', ' ')}</strong><span style={{ color: offer.blocked_by_ethics ? '#b34d4d' : 'var(--teal)', fontSize: 12, fontWeight: 700 }}>{offer.blocked_by_ethics ? 'PAUSED BY ETHICS' : 'RECOMMENDED'}</span></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center' }}><strong style={{ fontSize: 18 }}>{offer.product_code.replaceAll('_', ' ')}</strong><span style={{ color: offer.blocked_by_ethics ? '#b34d4d' : 'var(--teal)', fontSize: 12, fontWeight: 700 }}>{offer.blocked_by_ethics ? 'PAUSED BY ETHICS' : 'RECOMMENDED'}</span></div>
         <p style={{ color: 'var(--muted)', lineHeight: 1.5 }}>{offer.reason}</p>
         <button disabled={offer.blocked_by_ethics || submitting === offer.id} onClick={() => void accept(offer.id)} style={{ border: '1px solid var(--teal)', borderRadius: 8, background: offer.blocked_by_ethics ? '#f1f1f1' : 'white', color: offer.blocked_by_ethics ? 'var(--muted)' : 'var(--teal)', padding: '9px 13px', cursor: offer.blocked_by_ethics ? 'not-allowed' : 'pointer' }}>{offer.blocked_by_ethics ? copy.paused : submitting === offer.id ? 'Recording...' : copy.request}</button>
       </div>) : <p style={{ color: 'var(--muted)' }}>No recommendations yet. Your next safe move will appear here.</p>}
@@ -234,21 +234,85 @@ function Offers({ data, copy }: { data: Dashboard; copy: TranslationCopy }) {
   </div>;
 }
 
+type UserExplanation = { user_id: string; segment: string; stress_flag: boolean; ethics_explanation: string };
+type TxnExplanation = { id: string; status: string; fraud_score: number; features: Record<string, unknown>; fired_rules: string[]; explanation_en: string; explanation_hi: string };
+
 function Explain({ data }: { data: Dashboard }) {
+  const [userExplain, setUserExplain] = useState<UserExplanation | null>(null);
+  const [userError, setUserError] = useState('');
+  const [openTxnId, setOpenTxnId] = useState<string | null>(null);
+  const [txnExplain, setTxnExplain] = useState<TxnExplanation | null>(null);
+  const [txnLoading, setTxnLoading] = useState(false);
+  const [txnError, setTxnError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    api<UserExplanation>(`/explain/user/${data.user.id}`)
+      .then(result => { if (!cancelled) setUserExplain(result); })
+      .catch(err => { if (!cancelled) setUserError(err instanceof Error ? err.message : 'Could not load the audit trail'); });
+    return () => { cancelled = true; };
+  }, [data.user.id]);
+
+  const toggleTxn = async (id: string) => {
+    if (openTxnId === id) { setOpenTxnId(null); setTxnExplain(null); return; }
+    setOpenTxnId(id);
+    setTxnExplain(null);
+    setTxnError('');
+    setTxnLoading(true);
+    try {
+      const result = await api<TxnExplanation>(`/explain/txn/${id}`);
+      setTxnExplain(result);
+    } catch (err) {
+      setTxnError(err instanceof Error ? err.message : 'Could not load this transaction’s explanation');
+    } finally {
+      setTxnLoading(false);
+    }
+  };
+
   return (
     <div className="fade-up" style={{ marginTop: 28 }}>
       <div className="card" style={{ padding: 24 }}>
         <p style={{ color: 'var(--teal)', fontWeight: 700, fontSize: 12, textTransform: 'uppercase' }}>Auditor view</p>
         <h2 className="display" style={{ fontSize: 30 }}>Why Arth-AI chose this path</h2>
         <p style={{ color: 'var(--muted)', lineHeight: 1.6 }}>The system combines rolling behavior, transaction context, and hard safety rules. The assistant cannot override this gate.</p>
+        {userError && <p role="alert" style={{ color: '#b34d4d', fontSize: 13, marginTop: 12 }}>{userError}</p>}
         <div style={{ marginTop: 24 }}>
-          {[['Behavioral segment', data.segment], ['Stress flag', data.stress_flag ? 'Active: credit paused' : 'Clear'], ['Ethics decision', data.stress_flag ? 'Grace support only' : 'Relevant offers allowed']].map(([label, value]) => (
+          {[['Behavioral segment', (userExplain ?? data).segment], ['Stress flag', (userExplain ?? data).stress_flag ? 'Active: credit paused' : 'Clear'], ['Ethics decision', userExplain?.ethics_explanation ?? (data.stress_flag ? 'Grace support only' : 'Relevant offers allowed')]].map(([label, value]) => (
             <div key={String(label)} style={{ display: 'flex', justifyContent: 'space-between', gap: 20, padding: '14px 0', borderBottom: '1px solid var(--line)' }}>
               <span style={{ color: 'var(--muted)' }}>{String(label)}</span>
-              <strong>{String(value)}</strong>
+              <strong style={{ textAlign: 'right', maxWidth: 320 }}>{String(value)}</strong>
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="card" style={{ padding: 24, marginTop: 20 }}>
+        <h3 className="display" style={{ fontSize: 20, margin: 0 }}>Per-transaction explanation</h3>
+        <p style={{ color: 'var(--muted)', lineHeight: 1.5 }}>Pick a recent transaction to see the exact fired rules and feature values behind its fraud score.</p>
+        {data.transactions.length === 0 && <p style={{ color: 'var(--muted)' }}>No transactions yet.</p>}
+        {data.transactions.map(txn => (
+          <div key={txn.id} style={{ borderBottom: '1px solid var(--line)' }}>
+            <button onClick={() => void toggleTxn(txn.id)} style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, padding: '14px 0', border: 0, background: 'transparent', cursor: 'pointer', textAlign: 'left' }}>
+              <span><strong>{txn.payee}</strong><br /><small style={{ color: 'var(--muted)' }}>{txn.category} · {txn.status} · score {txn.fraud_score}</small></span>
+              <ChevronRight size={16} style={{ transform: openTxnId === txn.id ? 'rotate(90deg)' : 'none', transition: 'transform .15s' }} />
+            </button>
+            {openTxnId === txn.id && (
+              <div style={{ paddingBottom: 16 }}>
+                {txnLoading && <p style={{ color: 'var(--muted)' }}>Loading explanation...</p>}
+                {txnError && <p role="alert" style={{ color: '#b34d4d', fontSize: 13 }}>{txnError}</p>}
+                {txnExplain && (
+                  <div style={{ background: '#f7f9f8', borderRadius: 8, padding: 14 }}>
+                    <p style={{ margin: 0 }}>{txnExplain.explanation_en}</p>
+                    <p style={{ margin: '10px 0 4px', fontWeight: 700, fontSize: 12, textTransform: 'uppercase', color: 'var(--muted)' }}>Fired rules</p>
+                    <p style={{ margin: 0 }}>{txnExplain.fired_rules.length ? txnExplain.fired_rules.join(', ') : 'None — no hard rule triggered'}</p>
+                    <p style={{ margin: '10px 0 4px', fontWeight: 700, fontSize: 12, textTransform: 'uppercase', color: 'var(--muted)' }}>Features</p>
+                    <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: 12 }}>{JSON.stringify(txnExplain.features, null, 2)}</pre>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -390,7 +454,7 @@ function App() {
       {toast && <div className="toast" role="status"><span className="toast-icon"><Bell size={17} /></span><span><strong>{toast.title}</strong><small>{toast.message}</small></span><button aria-label="Dismiss alert" onClick={() => setToast(null)}><X size={16} /></button></div>}
       <aside className="bank-sidebar">
         <div className="sidebar-brand"><span className="brand-icon"><ShieldCheck size={17} /></span><span>ARTH<span>-</span>AI</span></div>
-        <div className="profile-mini"><span className="profile-avatar">{dashboard.user.name.slice(0, 1)}</span><span><strong>{dashboard.user.name}</strong><small>{dashboard.segment.replace('_', ' ')}</small></span></div>
+        <div className="profile-mini"><span className="profile-avatar">{dashboard.user.name.slice(0, 1)}</span><span><strong>{dashboard.user.name}</strong><small>{dashboard.segment.replaceAll('_', ' ')}</small></span></div>
         <p className="side-label">YOUR BANKING</p>
         <nav className="side-nav">
           {nav.map(({ label, text, icon: Icon }) => <button className={view === label ? 'active' : ''} key={label} onClick={() => navigate(label)}><Icon size={17} /><span>{text}</span>{view === label && <ChevronRight size={14} />}</button>)}
