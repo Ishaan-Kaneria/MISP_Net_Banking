@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
-import { AlertCircle, ArrowUpRight, Bell, CheckCircle2, ChevronRight, CircleHelp, Clock3, IndianRupee, LayoutDashboard, MessageCircle, ShieldCheck, TrendingUp, X, Zap } from "lucide-react";
+import { AlertCircle, ArrowLeft, ArrowUpRight, Bell, CheckCircle2, ChevronRight, CircleHelp, Clock3, IndianRupee, LayoutDashboard, MessageCircle, ShieldCheck, TrendingUp, X, Zap } from "lucide-react";
 import { api } from "../lib/api";
 
 type Dashboard = {
@@ -14,6 +14,9 @@ type Dashboard = {
   offers: Array<{ id: string; product_code: string; reason: string; blocked_by_ethics: boolean }>;
   alerts: Array<{ id: string; type: string; message_en: string; message_hi: string }>;
 };
+
+type View = 'Overview' | 'Offers' | 'Conversation' | 'Explain' | 'Simulator';
+const isView = (value: unknown): value is View => ['Overview', 'Offers', 'Conversation', 'Explain', 'Simulator'].includes(String(value));
 
 const money = (value: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value);
 
@@ -201,9 +204,19 @@ function Conversation({ chat, reply, ask, language, setLanguage, copy }: { chat:
 
 function Offers({ data, copy }: { data: Dashboard; copy: TranslationCopy }) {
   const [accepted, setAccepted] = useState<string | null>(null);
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState<string | null>(null);
   const accept = async (id: string) => {
-    const result = await api<{ accepted: boolean; message?: string; reason?: string }>(`/offers/${id}/accept`, { method: 'POST' });
-    setAccepted(result.accepted ? `${id}: request recorded` : result.reason || 'This offer is paused for your protection.');
+    try {
+      setError('');
+      setSubmitting(id);
+      const result = await api<{ accepted: boolean; message?: string; reason?: string }>(`/offers/${id}/accept`, { method: 'POST' });
+      setAccepted(result.accepted ? result.message || 'Your support request has been recorded.' : result.reason || 'This offer is paused for your protection.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'We could not record your request. Please try again.');
+    } finally {
+      setSubmitting(null);
+    }
   };
   return <div className="fade-up" style={{ marginTop: 28 }}>
     <div className="card" style={{ padding: 24 }}>
@@ -213,9 +226,10 @@ function Offers({ data, copy }: { data: Dashboard; copy: TranslationCopy }) {
       {data.offers.length ? data.offers.map(offer => <div key={offer.id} style={{ padding: '18px 0', borderBottom: '1px solid var(--line)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center' }}><strong style={{ fontSize: 18 }}>{offer.product_code.replace('_', ' ')}</strong><span style={{ color: offer.blocked_by_ethics ? '#b34d4d' : 'var(--teal)', fontSize: 12, fontWeight: 700 }}>{offer.blocked_by_ethics ? 'PAUSED BY ETHICS' : 'RECOMMENDED'}</span></div>
         <p style={{ color: 'var(--muted)', lineHeight: 1.5 }}>{offer.reason}</p>
-        <button disabled={offer.blocked_by_ethics} onClick={() => void accept(offer.id)} style={{ border: '1px solid var(--teal)', borderRadius: 8, background: offer.blocked_by_ethics ? '#f1f1f1' : 'white', color: offer.blocked_by_ethics ? 'var(--muted)' : 'var(--teal)', padding: '9px 13px', cursor: offer.blocked_by_ethics ? 'not-allowed' : 'pointer' }}>{offer.blocked_by_ethics ? copy.paused : copy.request}</button>
+        <button disabled={offer.blocked_by_ethics || submitting === offer.id} onClick={() => void accept(offer.id)} style={{ border: '1px solid var(--teal)', borderRadius: 8, background: offer.blocked_by_ethics ? '#f1f1f1' : 'white', color: offer.blocked_by_ethics ? 'var(--muted)' : 'var(--teal)', padding: '9px 13px', cursor: offer.blocked_by_ethics ? 'not-allowed' : 'pointer' }}>{offer.blocked_by_ethics ? copy.paused : submitting === offer.id ? 'Recording...' : copy.request}</button>
       </div>) : <p style={{ color: 'var(--muted)' }}>No recommendations yet. Your next safe move will appear here.</p>}
-      {accepted && <p style={{ color: 'var(--teal)', fontWeight: 700, marginTop: 18 }}>{accepted}</p>}
+      {accepted && <p role="status" style={{ color: 'var(--teal)', fontWeight: 700, marginTop: 18 }}>{accepted}</p>}
+      {error && <p role="alert" style={{ color: 'var(--danger)', fontWeight: 700, marginTop: 18 }}>{error}</p>}
     </div>
   </div>;
 }
@@ -299,7 +313,7 @@ function App() {
   const [data, setData] = useState<Dashboard | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [authToken, setAuthToken] = useState<string | null>(null);
-  const [view, setView] = useState('Overview');
+  const [view, setView] = useState<View>('Overview');
   const [chat, setChat] = useState('');
   const [reply, setReply] = useState('');
   const [language, setLanguage] = useState('en');
@@ -331,13 +345,25 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (data?.alerts.length) {
-      const alert = data.alerts[0];
-      setToast({ title: alert.type === 'fraud' ? 'Payment protection alert' : 'Account support update', message: alert.message_en });
-      const timer = window.setTimeout(() => setToast(null), 7000);
-      return () => window.clearTimeout(timer);
-    }
-  }, [data?.alerts]);
+    window.history.replaceState({ ...(window.history.state || {}), arthaiView: 'Overview' }, '');
+    const handlePopState = (event: PopStateEvent) => setView(isView(event.state?.arthaiView) ? event.state.arthaiView : 'Overview');
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const navigate = (nextView: View) => {
+    if (nextView === view) return;
+    window.history.pushState({ ...(window.history.state || {}), arthaiView: nextView }, '');
+    setView(nextView);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const showNotifications = () => {
+    const alert = data?.alerts[0];
+    setToast(alert
+      ? { title: alert.type === 'fraud' ? 'Payment protection alert' : 'Account support update', message: alert.message_en }
+      : { title: 'No new alerts', message: 'Your account has no active security alerts.' });
+  };
 
   if (!authReady) return <main style={{ padding: 40 }}>Preparing your account...</main>;
   if (!authToken && !data) return <Login onLogin={() => { setAuthToken(localStorage.getItem('arthai_token')); void load(); }} />;
@@ -347,12 +373,16 @@ function App() {
   const copy = translations[language as keyof typeof translations] || translations.en;
   if (dashboard.user.kyc_status !== 'verified') return <Kyc onComplete={load} />;
 
-  const nav = [{ label: 'Overview', text: copy.overview, icon: LayoutDashboard }, { label: 'Conversation', text: copy.conversation, icon: MessageCircle }, { label: 'Explain', text: copy.explain, icon: CircleHelp }, { label: 'Simulator', text: copy.simulator, icon: Zap }];
+  const nav: Array<{ label: View; text: string; icon: typeof LayoutDashboard }> = [{ label: 'Overview', text: copy.overview, icon: LayoutDashboard }, { label: 'Conversation', text: copy.conversation, icon: MessageCircle }, { label: 'Explain', text: copy.explain, icon: CircleHelp }, { label: 'Simulator', text: copy.simulator, icon: Zap }];
 
   const ask = async (message: string) => {
     setChat(message);
-    const result = await api<{ reply: string }>('/chat', { method: 'POST', body: JSON.stringify({ message, lang: language }) });
-    setReply(result.reply);
+    try {
+      const result = await api<{ reply: string }>('/chat', { method: 'POST', body: JSON.stringify({ message, lang: language }) });
+      setReply(result.reply);
+    } catch (err) {
+      setReply(err instanceof Error ? err.message : 'I could not reach the assistant. Please try again.');
+    }
   };
 
   return (
@@ -363,19 +393,19 @@ function App() {
         <div className="profile-mini"><span className="profile-avatar">{dashboard.user.name.slice(0, 1)}</span><span><strong>{dashboard.user.name}</strong><small>{dashboard.segment.replace('_', ' ')}</small></span></div>
         <p className="side-label">YOUR BANKING</p>
         <nav className="side-nav">
-          {nav.map(({ label, text, icon: Icon }) => <button className={view === label ? 'active' : ''} key={label} onClick={() => setView(label)}><Icon size={17} /><span>{text}</span>{view === label && <ChevronRight size={14} />}</button>)}
+          {nav.map(({ label, text, icon: Icon }) => <button className={view === label ? 'active' : ''} key={label} onClick={() => navigate(label)}><Icon size={17} /><span>{text}</span>{view === label && <ChevronRight size={14} />}</button>)}
         </nav>
         <p className="side-label side-label-lower">SECURITY</p>
         <div className="side-security"><ShieldCheck size={16} /><span><strong>Protected account</strong><small>Monitoring is active</small></span></div>
         <button className="side-signout" onClick={() => { localStorage.removeItem('arthai_token'); location.reload(); }}>Sign out</button>
       </aside>
       <section className="bank-content">
-        <header className="bank-header"><div className="header-title"><span className="mobile-brand">ARTH-AI</span><span className="header-context">{copy.personal} / {nav.find(item => item.label === view)?.text}</span></div><div className="header-actions"><button className="header-icon" aria-label="Notifications"><Bell size={17} />{dashboard.alerts.length > 0 && <i />}</button><span className="header-divider" /><span className="secure-label"><ShieldCheck size={14} /> {copy.secure}</span><div className="language-switcher">{(['en', 'hi', 'gu'] as const).map(code => <button className={language === code ? 'selected' : ''} key={code} onClick={() => setLanguage(code)}>{code.toUpperCase()}</button>)}</div></div></header>
+        <header className="bank-header"><div className="header-title"><span className="mobile-brand">ARTH-AI</span><span className="header-context">{copy.personal} / {view === 'Offers' ? copy.recommendations : nav.find(item => item.label === view)?.text}</span></div><div className="header-actions"><button className="header-icon" aria-label="Show notifications" onClick={showNotifications}><Bell size={17} />{dashboard.alerts.length > 0 && <i />}</button><span className="header-divider" /><span className="secure-label"><ShieldCheck size={14} /> {copy.secure}</span><div className="language-switcher">{(['en', 'hi', 'gu'] as const).map(code => <button className={language === code ? 'selected' : ''} key={code} onClick={() => setLanguage(code)}>{code.toUpperCase()}</button>)}</div></div></header>
         <div className="content-inner">
-          <div className="portal-heading"><div><p className="eyebrow">{copy.personal.toUpperCase()}</p><h1 className="bank-title">{copy.morning}, {dashboard.user.name.split(' ')[0]}</h1><p className="welcome-copy">{copy.summary}</p></div><span className="date-stamp">12 September 2026</span></div>
-          {view === 'Overview' && <><div className="account-summary"><div className="summary-balance"><span className="balance-label">{copy.balance.toUpperCase()}</span><strong>{money(dashboard.balance)}</strong><p><span className="positive-dot" /> {dashboard.stress_flag ? copy.support : copy.stable}</p></div><div className="summary-account"><span>PRIMARY SAVINGS</span><strong>•••• 0001</strong><small>Last updated just now</small></div><div className="summary-action"><button onClick={() => setView('Simulator')}><ArrowUpRight size={16} /> {copy.simulator}</button></div></div><div className="summary-metrics"><Metric label={copy.savings} value={`${Math.round((dashboard.features.savings_rate || 0) * 100)}%`} detail={copy.rhythm} /><Metric label={copy.spend} value={money(dashboard.features.spend_30d || 0)} detail={copy.essentials} /><Metric label={copy.payments} value={`${dashboard.transactions.length}`} detail={copy.activity} /></div></>}
+          <div className="portal-heading"><div>{view !== 'Overview' && <button className="back-button" onClick={() => navigate('Overview')}><ArrowLeft size={15} /> Back to overview</button>}<p className="eyebrow">{copy.personal.toUpperCase()}</p><h1 className="bank-title">{view === 'Overview' ? `${copy.morning}, ${dashboard.user.name.split(' ')[0]}` : view === 'Offers' ? copy.recommendations : nav.find(item => item.label === view)?.text}</h1><p className="welcome-copy">{view === 'Overview' ? copy.summary : 'Use the navigation or your browser back button to return to your account overview.'}</p></div><span className="date-stamp">12 September 2026</span></div>
+          {view === 'Overview' && <><div className="account-summary"><div className="summary-balance"><span className="balance-label">{copy.balance.toUpperCase()}</span><strong>{money(dashboard.balance)}</strong><p><span className="positive-dot" /> {dashboard.stress_flag ? copy.support : copy.stable}</p></div><div className="summary-account"><span>PRIMARY SAVINGS</span><strong>•••• 0001</strong><small>Last updated just now</small></div><div className="summary-action"><button onClick={() => navigate('Simulator')}><ArrowUpRight size={16} /> {copy.simulator}</button></div></div><div className="summary-metrics"><Metric label={copy.savings} value={`${Math.round((dashboard.features.savings_rate || 0) * 100)}%`} detail={copy.rhythm} /><Metric label={copy.spend} value={money(dashboard.features.spend_30d || 0)} detail={copy.essentials} /><Metric label={copy.payments} value={`${dashboard.transactions.length}`} detail={copy.activity} /></div></>}
           <div className="workspace-view">
-            {view === 'Overview' && <Overview data={dashboard} copy={copy} onDetails={() => setView('Offers')} />}
+            {view === 'Overview' && <Overview data={dashboard} copy={copy} onDetails={() => navigate('Offers')} />}
             {view === 'Offers' && <Offers data={dashboard} copy={copy} />}
             {view === 'Conversation' && <Conversation chat={chat} reply={reply} ask={ask} language={language} setLanguage={setLanguage} copy={copy} />}
             {view === 'Explain' && <Explain data={dashboard} />}

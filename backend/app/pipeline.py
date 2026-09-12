@@ -102,8 +102,17 @@ def run_pipeline(db: Session, user_id: str, payload) -> tuple[Transaction, list[
     score.fraud_score, score.segment, score.life_stage, score.stress_flag = fraud_score, segment, segment, stress
     db.add(score)
     recommendations = offer_rules(category, segment, stress, float(payload.amount), debits)
+    existing_offers = {item.product_code: item for item in db.scalars(select(Recommendation).where(Recommendation.user_id == user_id))}
     for code, reason, blocked in recommendations:
-        db.add(Recommendation(user_id=user_id, product_code=code, reason=reason, blocked_by_ethics=blocked))
+        current = existing_offers.get(code)
+        if current:
+            current.reason = reason
+            current.blocked_by_ethics = blocked
+            db.add(current)
+        else:
+            created = Recommendation(user_id=user_id, product_code=code, reason=reason, blocked_by_ethics=blocked)
+            db.add(created)
+            existing_offers[code] = created
     alert_ids = []
     if status == "blocked":
         alert = Alert(user_id=user_id, type="fraud", message_hi="यह भुगतान सुरक्षा कारणों से रोक दिया गया है।", message_en="This payment was blocked for your protection.")
@@ -111,8 +120,9 @@ def run_pipeline(db: Session, user_id: str, payload) -> tuple[Transaction, list[
         db.flush()
         alert_ids.append(alert.id)
     if stress:
-        alert = Alert(user_id=user_id, type="stress", message_hi="आपकी नकदी सुरक्षित रखना हमारी प्राथमिकता है।", message_en="Your cash flow comes first. Grace support is available.")
-        db.add(alert)
+        has_stress_alert = db.scalar(select(Alert.id).where(Alert.user_id == user_id, Alert.type == "stress"))
+        if not has_stress_alert:
+            db.add(Alert(user_id=user_id, type="stress", message_hi="आपकी नकदी सुरक्षित रखना हमारी प्राथमिकता है।", message_en="Your cash flow comes first. Grace support is available."))
     db.add(AuditLog(user_id=user_id, action="txn_score", features={"km_from_last": km, "is_night": is_night, "fraud_score": fraud_score, "amount_vs_typical": round(amount_vs_typical, 3), "balance_ratio": round(balance_ratio, 3), "is_new_payee": is_new_payee, "payee_frequency_30d": payee_frequency_30d}, reasons=hard_reasons))
     db.commit()
     db.refresh(transaction)

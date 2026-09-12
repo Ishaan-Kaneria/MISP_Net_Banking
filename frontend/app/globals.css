@@ -114,6 +114,8 @@ button, input { font: inherit; }
 .language-switcher button.selected { color: white; background: var(--teal); }
 .content-inner { max-width: 840px; padding: 42px 34px 80px; margin: 0 auto; }
 .portal-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; }
+.back-button { display: inline-flex; align-items: center; gap: 6px; margin: 0 0 14px; padding: 0; border: 0; background: transparent; color: var(--teal); font-size: 12px; font-weight: 700; cursor: pointer; }
+.back-button:hover { color: #05645f; text-decoration: underline; }
 .account-summary { display: grid; grid-template-columns: 1.3fr .7fr auto; align-items: center; gap: 22px; margin-top: 30px; padding: 23px 25px; color: white; background: #163d56; border-radius: 7px; box-shadow: 0 8px 18px rgba(18,45,66,.14); }
 .summary-balance strong { display: block; margin-top: 7px; font-size: 34px; letter-spacing: -.02em; }
 .summary-balance p { display: flex; align-items: center; gap: 7px; margin: 7px 0 0; color: #b8d1d2; font-size: 11px; }

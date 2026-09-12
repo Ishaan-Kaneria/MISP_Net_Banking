@@ -25,6 +25,18 @@ def startup() -> None:
     seed()
 
 
+def unique_by_key(items: list, key: str) -> list:
+    seen: set[str] = set()
+    unique: list = []
+    for item in items:
+        value = getattr(item, key)
+        if value in seen:
+            continue
+        seen.add(value)
+        unique.append(item)
+    return unique
+
+
 def current_user(authorization: str | None, db: Session) -> User:
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(401, detail={"error": "Authentication required", "code": "AUTH_REQUIRED", "details": {}})
@@ -81,8 +93,8 @@ def dashboard(authorization: str | None = Header(default=None), db: Session = De
     feature = db.get(UserFeature, user.id)
     score = db.get(UserScore, user.id)
     txns = list(db.scalars(select(Transaction).where(Transaction.user_id == user.id).order_by(Transaction.ts.desc()).limit(20)))
-    offers = list(db.scalars(select(Recommendation).where(Recommendation.user_id == user.id).order_by(Recommendation.created_at.desc()).limit(8)))
-    alerts = list(db.scalars(select(Alert).where(Alert.user_id == user.id).order_by(Alert.created_at.desc()).limit(8)))
+    offers = unique_by_key(list(db.scalars(select(Recommendation).where(Recommendation.user_id == user.id).order_by(Recommendation.created_at.desc()).limit(24))), "product_code")[:6]
+    alerts = unique_by_key(list(db.scalars(select(Alert).where(Alert.user_id == user.id).order_by(Alert.created_at.desc()).limit(24))), "type")[:6]
     feature_payload = {
         "spend_7d": float(feature.spend_7d or 0) if feature else 0,
         "spend_30d": float(feature.spend_30d or 0) if feature else 0,
@@ -105,7 +117,7 @@ def alerts(authorization: str | None = Header(default=None), db: Session = Depen
 @app.get("/offers")
 def offers(authorization: str | None = Header(default=None), db: Session = Depends(get_db)):
     user = current_user(authorization, db)
-    return [{"id": x.id, "product_code": x.product_code, "reason": x.reason, "blocked_by_ethics": x.blocked_by_ethics} for x in db.scalars(select(Recommendation).where(Recommendation.user_id == user.id).order_by(Recommendation.created_at.desc()))]
+    return [{"id": x.id, "product_code": x.product_code, "reason": x.reason, "blocked_by_ethics": x.blocked_by_ethics} for x in unique_by_key(list(db.scalars(select(Recommendation).where(Recommendation.user_id == user.id).order_by(Recommendation.created_at.desc()))), "product_code")]
 
 
 @app.post("/offers/{recommendation_id}/accept")
