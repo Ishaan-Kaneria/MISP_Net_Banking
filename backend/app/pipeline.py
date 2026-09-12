@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .models import Account, Alert, AuditLog, Recommendation, Transaction, User, UserFeature, UserScore
+from .ml.fraud import fraud_score as model_fraud_score
 from .rules import fraud_hard_rules, haversine_km, offer_rules
 
 CATEGORIES = {
@@ -47,7 +48,8 @@ def run_pipeline(db: Session, user_id: str, payload) -> tuple[Transaction, list[
     is_night = local_time.hour >= 22 or local_time.hour < 5
     hard_reasons = fraud_hard_rules(amount=float(payload.amount), km_from_last=km, same_device=same_device,
                                     txns_last_2m=len(recent_debits) + (1 if payload.direction == "debit" else 0), category=category, is_night=is_night)
-    anomaly_score = min(0.98, 0.12 + (float(payload.amount) / 100000) + (0.2 if is_night else 0) + (0.2 if not same_device else 0))
+    anomaly_score = model_fraud_score(amount=float(payload.amount), hour=local_time.hour, is_night=is_night,
+                                      km_from_last=km, same_device=same_device, velocity_2m=len(recent_debits))
     fraud_score = round(max(anomaly_score, 0.86 if hard_reasons else 0), 3)
     status = "blocked" if hard_reasons or fraud_score >= 0.82 else "posted"
     transaction = Transaction(user_id=user_id, amount=payload.amount, direction=payload.direction,

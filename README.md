@@ -48,6 +48,8 @@ docker compose up --build
 
 The Compose stack starts PostgreSQL with pgvector, the API, and the web app. The API seeds demo personas idempotently on startup. Local Python development defaults to SQLite so the UI and API can be explored without Docker.
 
+Fraud scoring uses a deterministic IsolationForest trained on synthetic normal transactions at application boot. Hard fraud rules remain an independent final gate, so model behavior can never weaken a rule-based block.
+
 ## Product boundaries
 
 Identity, UPI, DigiLocker, WhatsApp, and customer funds are mocked. No Aadhaar bytes or real payment credentials are accepted. Fraud and ethics decisions happen server-side; the chat assistant cannot bypass them.
