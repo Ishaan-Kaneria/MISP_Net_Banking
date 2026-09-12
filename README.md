@@ -50,6 +50,8 @@ The Compose stack starts PostgreSQL with pgvector, the API, and the web app. The
 
 Fraud scoring uses a deterministic IsolationForest trained on synthetic normal transactions at application boot. Hard fraud rules remain an independent final gate, so model behavior can never weaken a rule-based block.
 
+Life-stage scoring uses an XGBoost multiclass model trained from synthetic aggregates at boot when `xgboost` is installed, with a deterministic rule fallback for lightweight local development.
+
 Chat messages are persisted in PostgreSQL/SQLite and responses include the policy documents used by the lightweight retrieval layer. Add a Gemini or Groq key later for live multilingual generation without changing the API contract.
 
 ## Product boundaries

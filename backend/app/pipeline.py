@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from .models import Account, Alert, AuditLog, Recommendation, Transaction, User, UserFeature, UserScore
 from .ml.fraud import fraud_score as model_fraud_score
+from .ml.segment import predict_segment
 from .rules import fraud_hard_rules, haversine_km, offer_rules
 
 CATEGORIES = {
@@ -82,10 +83,11 @@ def run_pipeline(db: Session, user_id: str, payload) -> tuple[Transaction, list[
         segment = "MEDICAL"
     elif category == "SALARY" and not history:
         segment = "FIRST_JOB"
-    elif feature.savings_rate > 0.2:
-        segment = "SAVER"
     else:
-        segment = "BASELINE"
+        segment = predict_segment(spend_30d=debits, savings_rate=feature.savings_rate,
+                                  missed_emi=feature.missed_emi_30d, hospital_spend=sum(float(t.amount) for t in recent if t.category == "HOSPITAL"),
+                                  unique_payees=feature.unique_payees_7d, salary_amount=float(feature.salary_amt),
+                                  velocity=len(recent_debits), entertainment_spend=sum(float(t.amount) for t in recent if t.category == "ENTERTAINMENT"))
     stress = segment == "STRESS" or feature.missed_emi_30d > 0
     score = db.get(UserScore, user_id) or UserScore(user_id=user_id)
     score.fraud_score, score.segment, score.life_stage, score.stress_flag = fraud_score, segment, segment, stress
