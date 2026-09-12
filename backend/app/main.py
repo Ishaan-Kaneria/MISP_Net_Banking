@@ -16,7 +16,7 @@ from .schemas import ChatRequest, HealthResponse, KycRequest, LoginRequest, Tran
 from .security import create_token, decode_token, hash_pin, verify_pin
 from .seed import seed
 
-app = FastAPI(title="Arth-AI", version="0.1.0")
+app = FastAPI(title="MISP Bank", version="0.1.0")
 app.add_middleware(CORSMiddleware, allow_origins=[x.strip() for x in settings.cors_origins.split(",")], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 
@@ -162,7 +162,7 @@ def dashboard(authorization: str | None = Header(default=None), db: Session = De
         "unique_payees_7d": feature.unique_payees_7d if feature else 0,
         "missed_emi_30d": feature.missed_emi_30d if feature else 0,
     }
-    return {"user": {"id": user.id, "name": user.name, "lang": user.lang, "kyc_status": user.kyc_status}, "balance": float(account.balance if account else 0), "segment": score.segment if score else "BASELINE", "stress_flag": score.stress_flag if score else False, "features": feature_payload, "transactions": [{"id": t.id, "amount": float(t.amount), "direction": t.direction, "payee": t.payee, "category": t.category, "status": t.status, "fraud_score": t.fraud_score, "ts": t.ts.isoformat()} for t in txns], "offers": [{"id": x.id, "product_code": x.product_code, "reason": x.reason, "blocked_by_ethics": x.blocked_by_ethics} for x in offers], "alerts": [{"id": x.id, "type": x.type, "message_en": x.message_en, "message_hi": x.message_hi} for x in alerts]}
+    return {"user": {"id": user.id, "name": user.name, "lang": user.lang, "kyc_status": user.kyc_status, "device_id": user.device_id}, "balance": float(account.balance if account else 0), "segment": score.segment if score else "BASELINE", "stress_flag": score.stress_flag if score else False, "features": feature_payload, "transactions": [{"id": t.id, "amount": float(t.amount), "direction": t.direction, "payee": t.payee, "category": t.category, "status": t.status, "fraud_score": t.fraud_score, "ts": t.ts.isoformat()} for t in txns], "offers": [{"id": x.id, "product_code": x.product_code, "reason": x.reason, "blocked_by_ethics": x.blocked_by_ethics} for x in offers], "alerts": [{"id": x.id, "type": x.type, "message_en": x.message_en, "message_hi": x.message_hi} for x in alerts]}
 
 
 @app.get("/alerts")

@@ -1,5 +1,5 @@
 export type Dashboard = {
-  user: { id: string; name: string; lang: string; kyc_status: string };
+  user: { id: string; name: string; lang: string; kyc_status: string; device_id: string | null };
   balance: number;
   segment: string;
   stress_flag: boolean;

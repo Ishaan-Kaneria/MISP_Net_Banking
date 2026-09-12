@@ -12,8 +12,9 @@ export function Sidebar({
   return (
     <aside className="flex min-h-screen flex-col gradient-navy px-3.5 pb-5 pt-6 text-[#c7d6ea] max-md:min-h-0 max-md:px-4 max-md:py-3">
       <div className="flex items-center gap-2.5 px-2.5 pb-7 text-base font-bold tracking-wide text-white max-md:pb-0">
-        <span className="grid h-[30px] w-[30px] place-items-center rounded-lg bg-white text-navy"><ShieldCheck size={17} /></span>
-        <span>ARTH<span className="text-[#79b3ff]">-</span>AI</span>
+        {/* eslint-disable-next-line @next/next/no-img-element -- a tiny static brand mark, not worth next/image's runtime for */}
+        <img src="/logo.svg" alt="" width={30} height={30} className="rounded-lg" />
+        <span>MISP BANK</span>
       </div>
 
       <div className="flex items-center gap-2.5 border-y border-white/10 px-2.5 py-3.5 max-md:hidden">

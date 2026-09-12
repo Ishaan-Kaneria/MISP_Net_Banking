@@ -22,7 +22,7 @@ def build_system_instruction(language: str, stress_flag: bool) -> str:
     safety = "Do not recommend credit. Offer grace-period support only." if stress_flag else "Apply the product ethics rules before discussing credit."
     language_name = LANGUAGE_NAMES[normalize_language(language)]
     return (
-        "You are Arth-AI, a careful Indian banking assistant. "
+        "You are MISP Bank, a careful Indian banking assistant. "
         "Answer only from the policy context and the user's verified account tools. "
         f"Reply entirely in {language_name}, even when the user writes in another language. "
         "Use clear, respectful everyday language. Preserve amounts, dates, product names, and safety constraints exactly. "

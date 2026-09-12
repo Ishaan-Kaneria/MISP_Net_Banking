@@ -11,6 +11,9 @@ PERSONAS = [
     ("Priya Verma", "9000000002", "hi", "FIRST_JOB", 18000),
     ("Amit Kumar", "9000000003", "hi", "STRESS", 4500),
     ("Meena Iyer", "9000000004", "hi", "MEDICAL", 22000),
+    ("Fatima Sheikh", "9000000005", "hi", "MARRIAGE", 45000),
+    ("Karthik Subramaniam", "9000000006", "en", "HIGH_VELOCITY", 15000),
+    ("Ananya Roy", "9000000007", "en", "BASELINE", 20000),
 ]
 
 
@@ -23,7 +26,7 @@ def _seed_saver_history(db, user: User) -> None:
     transaction would silently overwrite.
     """
     now = datetime.now(timezone.utc)
-    for days_ago in (150, 120, 90, 60, 30, 2):
+    for days_ago in (150, 120, 90, 60, 29, 2):
         db.add(Transaction(user_id=user.id, amount=32000, direction="credit", payee="Salary", category="SALARY", device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.03))
     for days_ago in (145, 105, 65, 25):
         db.add(Transaction(user_id=user.id, amount=4000, direction="debit", payee="Emi", category="EMI", device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.03))
@@ -38,9 +41,9 @@ def _seed_medical_history(db, user: User) -> None:
     instead of relying on the probabilistic segmentation model.
     """
     now = datetime.now(timezone.utc)
-    for days_ago in (150, 120, 90, 60, 30, 2):
+    for days_ago in (150, 120, 90, 60, 29, 2):
         db.add(Transaction(user_id=user.id, amount=24000, direction="credit", payee="Salary", category="SALARY", device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.03))
-    for days_ago in (150, 105, 60, 30):
+    for days_ago in (150, 105, 60, 29):
         db.add(Transaction(user_id=user.id, amount=5500, direction="debit", payee="Emi", category="EMI", device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.03))
     for days_ago, amount in ((20, 6800), (12, 5400), (5, 4200)):
         db.add(Transaction(user_id=user.id, amount=amount, direction="debit", payee="Apollo Hospital", category="HOSPITAL", device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.03))
@@ -66,6 +69,65 @@ def _seed_first_job_history(db, user: User) -> None:
     for days_ago, amount in ((9, 650), (6, 420), (3, 900)):
         db.add(Transaction(user_id=user.id, amount=amount, direction="debit", payee="Zepto", category="UPI_GROCERY", device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.03))
     db.add(Transaction(user_id=user.id, amount=199, direction="debit", payee="Netflix", category="ENTERTAINMENT", device_id=user.device_id, ts=now - timedelta(days=7), status="posted", fraud_score=0.03))
+
+
+def _seed_marriage_history(db, user: User) -> None:
+    """Fatima Sheikh — a big, recent wedding-related expense against a
+    normal salary. There's no deterministic predict_segment() override for
+    MARRIAGE (only SAVER/MEDICAL/STRESS/HIGH_VELOCITY have one), so like
+    FIRST_JOB this is a best-effort classification by the segmentation
+    model -- but her numbers are shaped to lean the right way: spend_30d
+    well above salary (the model's own synthetic training data marks
+    MARRIAGE with elevated spend, unlike SAVER's low-spend signal) while
+    staying clear of hospital, missed-EMI, and high-velocity territory.
+    """
+    now = datetime.now(timezone.utc)
+    for days_ago in (150, 120, 90, 60, 29, 2):
+        db.add(Transaction(user_id=user.id, amount=30000, direction="credit", payee="Salary", category="SALARY", device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.03))
+    db.add(Transaction(user_id=user.id, amount=40000, direction="debit", payee="Grand Wedding Hall", device_id=user.device_id, ts=now - timedelta(days=9), status="posted", fraud_score=0.03))
+    db.add(Transaction(user_id=user.id, amount=12000, direction="debit", payee="Zaveri Jewellers", device_id=user.device_id, ts=now - timedelta(days=6), status="posted", fraud_score=0.03))
+    for days_ago, amount in ((18, 900), (11, 1200), (4, 850)):
+        db.add(Transaction(user_id=user.id, amount=amount, direction="debit", payee="Zepto", category="UPI_GROCERY", device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.03))
+
+
+def _seed_high_velocity_history(db, user: User) -> None:
+    """Karthik Subramaniam — frequent small payments to many distinct payees
+    within the last 7 days. Unlike MARRIAGE/FIRST_JOB, HIGH_VELOCITY *does*
+    have a deterministic predict_segment() rule (`unique_payees > 15`, same
+    idea as SAVER/MEDICAL's own rules), so this one is built to trip it for
+    real: 18 distinct one-off merchants inside the last 7 days.
+    """
+    now = datetime.now(timezone.utc)
+    for days_ago in (60, 29, 2):
+        db.add(Transaction(user_id=user.id, amount=22000, direction="credit", payee="Salary", category="SALARY", device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.03))
+    merchants = ["Swiggy", "Zomato", "Ola", "Uber", "BigBasket", "BluDart Courier", "PVR Cinemas",
+                "Croma", "Decathlon", "Chai Point", "Dominos", "Haircut Salon", "Metro Recharge",
+                "Book Store", "Pharmacy", "Bakery", "Parking App", "Streaming Service"]
+    for index, merchant in enumerate(merchants):
+        db.add(Transaction(user_id=user.id, amount=120 + index * 35, direction="debit", payee=merchant, device_id=user.device_id, ts=now - timedelta(days=index % 6, hours=index), status="posted", fraud_score=0.03))
+
+
+def _seed_baseline_history(db, user: User) -> None:
+    """Ananya Roy — a plain, unremarkable account: moderate salary, moderate
+    spend, nothing in any special category. Like MARRIAGE/FIRST_JOB there's
+    no deterministic override that lands on BASELINE specifically (it's
+    whatever's left once every other rule and the model itself pass), so
+    this is deliberately just an ordinary month with no signal pointing
+    anywhere in particular.
+    """
+    now = datetime.now(timezone.utc)
+    for days_ago in (150, 120, 90, 60, 29, 2):
+        db.add(Transaction(user_id=user.id, amount=25000, direction="credit", payee="Salary", category="SALARY", device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.03))
+    for days_ago in (140, 110, 80, 50, 20):
+        db.add(Transaction(user_id=user.id, amount=6200, direction="debit", payee="Emi", category="EMI", device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.03))
+    for days_ago in range(1, 28, 3):
+        db.add(Transaction(user_id=user.id, amount=400 + days_ago * 10, direction="debit", payee="Zepto", category="UPI_GROCERY", device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.03))
+    db.add(Transaction(user_id=user.id, amount=249, direction="debit", payee="Netflix", category="ENTERTAINMENT", device_id=user.device_id, ts=now - timedelta(days=15), status="posted", fraud_score=0.03))
+    # Keeps spend_30d at ~0.8x salary so she doesn't accidentally clear
+    # predict_segment()'s SAVER threshold (savings_rate>0.2 AND
+    # spend_30d<0.8*salary) purely from low day-to-day spend -- an ordinary
+    # month with rent still spends a normal share of the salary.
+    db.add(Transaction(user_id=user.id, amount=9000, direction="debit", payee="Rent", device_id=user.device_id, ts=now - timedelta(days=8), status="posted", fraud_score=0.03))
 
 
 def _seed_stress_history(db, user: User) -> None:
@@ -96,12 +158,18 @@ HISTORY_BUILDERS = {
     "FIRST_JOB": _seed_first_job_history,
     "STRESS": _seed_stress_history,
     "MEDICAL": _seed_medical_history,
+    "MARRIAGE": _seed_marriage_history,
+    "HIGH_VELOCITY": _seed_high_velocity_history,
+    "BASELINE": _seed_baseline_history,
 }
 INITIAL_FEATURES = {
     "SAVER": {"spend_7d": 1200, "spend_30d": 9100, "savings_rate": 0.86, "salary_amt": 32000, "emi_count": 1, "missed_emi_30d": 0},
     "FIRST_JOB": {"spend_7d": 1750, "spend_30d": 12669, "savings_rate": 0.16, "salary_amt": 15000, "emi_count": 0, "missed_emi_30d": 0},
     "STRESS": {"spend_7d": 6100, "spend_30d": 18500, "savings_rate": -0.3, "salary_amt": 13500, "emi_count": 1, "missed_emi_30d": 1},
     "MEDICAL": {"spend_7d": 5300, "spend_30d": 25200, "savings_rate": 0.475, "salary_amt": 24000, "emi_count": 1, "missed_emi_30d": 0},
+    "MARRIAGE": {"spend_7d": 2950, "spend_30d": 54950, "savings_rate": 0.084, "salary_amt": 30000, "emi_count": 0, "missed_emi_30d": 0},
+    "HIGH_VELOCITY": {"spend_7d": 4536, "spend_30d": 4536, "savings_rate": -0.06, "salary_amt": 22000, "emi_count": 0, "missed_emi_30d": 0},
+    "BASELINE": {"spend_7d": 1740, "spend_30d": 18500, "savings_rate": 0.26, "salary_amt": 25000, "emi_count": 1, "missed_emi_30d": 0},
 }
 
 

@@ -12,7 +12,7 @@ screen:
   mixed-content-blocked — all of which surface as the same unhelpful literal
   `"Failed to fetch"`) separately from HTTP error *responses*. A network failure now shows
   "Could not reach the server..." instead, and the real cause is still logged to the
-  console (`[Arth-AI] Network error calling <path>: ...`) for debugging.
+  console (`[MISP Bank] Network error calling <path>: ...`) for debugging.
 - If `NEXT_PUBLIC_API_URL` is unset at build time, the app now warns loudly in the
   console rather than silently falling back to `http://localhost:8000` — the single most
   common cause of exactly this bug on a deployed build: **that env var is baked in at

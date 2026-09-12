@@ -16,7 +16,7 @@ const plexSans = IBM_Plex_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Arth-AI",
+  title: "MISP Bank",
   description: "Banking that meets you where life happens",
 };
 

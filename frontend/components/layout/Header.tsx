@@ -13,7 +13,7 @@ export function Header({
   return (
     <header className="flex min-h-[72px] items-center justify-between border-b border-border bg-white px-5 md:px-8">
       <div className="flex flex-col text-sm">
-        <span className="text-sm font-bold tracking-wide text-navy md:hidden">ARTH-AI</span>
+        <span className="text-sm font-bold tracking-wide text-navy md:hidden">MISP BANK</span>
         <span className="hidden text-xs text-[#64778e] md:inline">{copy.personal} / {view === "Offers" ? copy.recommendations : viewLabel}</span>
       </div>
       <div className="flex items-center gap-3 md:gap-4">

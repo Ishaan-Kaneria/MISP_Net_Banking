@@ -1,4 +1,4 @@
-"""Train and evaluate Arth-AI's deterministic synthetic ML artifacts."""
+"""Train and evaluate MISP Bank's deterministic synthetic ML artifacts."""
 
 from __future__ import annotations
 

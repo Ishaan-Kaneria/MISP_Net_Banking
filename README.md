@@ -1,6 +1,6 @@
-# Arth-AI
+# MISP Bank
 
-Arth-AI is a mobile-first banking demo for Bharat: a mocked UPI ledger, explainable fraud protection, behavioral segments, vernacular support, and ethics-first offers.
+MISP Bank is a mobile-first banking demo for Bharat: a mocked UPI ledger, explainable fraud protection, behavioral segments, vernacular support, and ethics-first offers.
 
 ## Run locally
 

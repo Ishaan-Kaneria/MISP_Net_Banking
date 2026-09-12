@@ -54,7 +54,7 @@ function App() {
       setLoadError("");
       setData(await api<Dashboard>("/dashboard"));
     } catch (error) {
-      localStorage.removeItem("arthai_token");
+      localStorage.removeItem("mispbank_token");
       setAuthToken(null);
       setData(null);
       setLoadError(error instanceof ApiError ? error.message : "Unable to load your account");
@@ -81,7 +81,7 @@ function App() {
 
   useEffect(() => {
     setAuthReady(true);
-    const token = localStorage.getItem("arthai_token");
+    const token = localStorage.getItem("mispbank_token");
     setAuthToken(token);
     if (token) void load();
     else setLoading(false);
@@ -94,15 +94,15 @@ function App() {
   useEffect(() => { document.documentElement.lang = language; }, [language]);
 
   useEffect(() => {
-    window.history.replaceState({ ...(window.history.state || {}), arthaiView: "Overview" }, "");
-    const handlePopState = (event: PopStateEvent) => setView(isView(event.state?.arthaiView) ? event.state.arthaiView : "Overview");
+    window.history.replaceState({ ...(window.history.state || {}), mispbankView: "Overview" }, "");
+    const handlePopState = (event: PopStateEvent) => setView(isView(event.state?.mispbankView) ? event.state.mispbankView : "Overview");
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
   const navigate = (nextView: View) => {
     if (nextView === view) return;
-    window.history.pushState({ ...(window.history.state || {}), arthaiView: nextView }, "");
+    window.history.pushState({ ...(window.history.state || {}), mispbankView: nextView }, "");
     setView(nextView);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -115,7 +115,7 @@ function App() {
   };
 
   if (!authReady) return <main className="p-10">Preparing your account...</main>;
-  if (!authToken && !data) return <Login onLogin={() => { setAuthToken(localStorage.getItem("arthai_token")); void load(); }} />;
+  if (!authToken && !data) return <Login onLogin={() => { setAuthToken(localStorage.getItem("mispbank_token")); void load(); }} />;
   if (loading || !data) {
     return (
       <main className="grid min-h-screen place-items-center gap-2.5 bg-paper p-8 text-center text-navy">
@@ -124,7 +124,7 @@ function App() {
         <p className="max-w-xs text-sm leading-relaxed text-muted">{loadError || "Connecting to your secure banking profile."}</p>
         {loadError && (
           <button
-            onClick={() => { localStorage.removeItem("arthai_token"); setAuthToken(null); setLoadError(""); setLoading(false); }}
+            onClick={() => { localStorage.removeItem("mispbank_token"); setAuthToken(null); setLoadError(""); setLoading(false); }}
             className="mt-2 rounded border border-primary bg-white px-3.5 py-2.5 font-bold text-primary"
           >
             Return to sign in
@@ -170,7 +170,7 @@ function App() {
 
       <Sidebar
         name={dashboard.user.name} segment={dashboard.segment} view={view} onNavigate={navigate}
-        onSignOut={() => { localStorage.removeItem("arthai_token"); location.reload(); }}
+        onSignOut={() => { localStorage.removeItem("mispbank_token"); location.reload(); }}
         nav={navWithText}
       />
 
@@ -202,7 +202,7 @@ function App() {
           {view === "Offers" && <Offers data={dashboard} copy={copy} />}
           {view === "Conversation" && <Conversation chat={chat} reply={reply} ask={ask} language={language} setLanguage={setLanguage} copy={copy} />}
           {view === "Explain" && <Explain data={dashboard} />}
-          {view === "Simulator" && <Simulator onComplete={refresh} />}
+          {view === "Simulator" && <Simulator balance={dashboard.balance} deviceId={dashboard.user.device_id} onComplete={refresh} />}
         </div>
       </section>
 

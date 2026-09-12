@@ -7,7 +7,7 @@ if (typeof window !== "undefined" && !process.env.NEXT_PUBLIC_API_URL) {
   // rebuilt afterwards. Without it, every deployed visitor's browser tries
   // to reach *their own* http://localhost:8000, which almost never exists.
   console.warn(
-    "[Arth-AI] NEXT_PUBLIC_API_URL is not set — falling back to http://localhost:8000. " +
+    "[MISP Bank] NEXT_PUBLIC_API_URL is not set — falling back to http://localhost:8000. " +
     "In a deployed build this will fail for every visitor. Set it in your hosting " +
     "provider's environment variables and redeploy."
   );
@@ -27,7 +27,7 @@ export class ApiError extends Error {
 const REQUEST_TIMEOUT_MS = 15000;
 
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = typeof window !== "undefined" ? localStorage.getItem("arthai_token") : null;
+  const token = typeof window !== "undefined" ? localStorage.getItem("mispbank_token") : null;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
@@ -45,7 +45,7 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
     // own message for most of these is the unhelpful literal "Failed to
     // fetch" — surface something a user can act on instead, and keep the
     // real cause in the console for debugging.
-    console.error(`[Arth-AI] Network error calling ${path}:`, cause);
+    console.error(`[MISP Bank] Network error calling ${path}:`, cause);
     const timedOut = cause instanceof DOMException && cause.name === "AbortError";
     throw new ApiError(
       timedOut

@@ -1,8 +1,8 @@
-# Arth-AI Decision Models
+# MISP Bank Decision Models
 
 ## Scope
 
-Arth-AI uses machine learning as one signal in a safety-first transaction and customer-decision pipeline. The models are trained on deterministic synthetic data for the hackathon; they are not approved for real banking decisions.
+MISP Bank uses machine learning as one signal in a safety-first transaction and customer-decision pipeline. The models are trained on deterministic synthetic data for the hackathon; they are not approved for real banking decisions.
 
 ## Fraud Decision Flow
 

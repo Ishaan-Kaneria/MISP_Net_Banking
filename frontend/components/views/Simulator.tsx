@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { api, ApiError } from "../../lib/api";
+import { money } from "../../lib/types";
 import { Button, Card } from "../ui";
 import { StepUpModal } from "../modals/StepUpModal";
 
@@ -15,8 +16,15 @@ const FIELDS = [
   ["ts", "Time (optional)"],
 ] as const;
 
-export function Simulator({ onComplete }: { onComplete: () => void }) {
-  const [form, setForm] = useState({ amount: "48000", payee: "New city transfer", lat: "28.61", lng: "77.20", device_id: "new-device", ts: "" });
+export function Simulator({ balance, deviceId, onComplete }: { balance: number; deviceId: string | null; onComplete: () => void }) {
+  // Defaults to a realistic, low-risk payment on the account's own
+  // registered device, so the very first run actually posts and visibly
+  // debits the balance -- a real money-transfer feel -- rather than the
+  // ₹48,000/new-device combination that's *designed* to always trip
+  // NEW_DEVICE_HIGH_VALUE and block, which made it look like the simulator
+  // never moves money at all. That risky preset is still one click away.
+  const [form, setForm] = useState({ amount: "1500", payee: "Zepto", lat: "28.61", lng: "77.20", device_id: deviceId || "device-0001", ts: "" });
+  const [submittedAmount, setSubmittedAmount] = useState<number | null>(null);
   const [result, setResult] = useState<{ status: string; fraud_score: number; category: string } | null>(null);
   const [error, setError] = useState("");
   const [showStepUp, setShowStepUp] = useState(false);
@@ -24,14 +32,22 @@ export function Simulator({ onComplete }: { onComplete: () => void }) {
 
   const update = (key: keyof typeof form, value: string) => setForm(current => ({ ...current, [key]: value }));
 
+  const applyPreset = (preset: "normal" | "risky") => {
+    setResult(null);
+    setForm(preset === "normal"
+      ? { amount: "1500", payee: "Zepto", lat: "28.61", lng: "77.20", device_id: deviceId || "device-0001", ts: "" }
+      : { amount: "48000", payee: "New city transfer", lat: "28.61", lng: "77.20", device_id: "new-device", ts: "" });
+  };
+
   const runSimulation = async () => {
     setRunning(true);
     try {
       setError("");
+      const amount = Number(form.amount);
       const response = await api<{ status: string; fraud_score: number; category: string }>("/admin/simulate-txn", {
         method: "POST",
         body: JSON.stringify({
-          amount: Number(form.amount),
+          amount,
           direction: "debit",
           payee: form.payee,
           lat: Number(form.lat),
@@ -40,6 +56,7 @@ export function Simulator({ onComplete }: { onComplete: () => void }) {
           ...(form.ts ? { ts: new Date(form.ts).toISOString() } : {}),
         }),
       });
+      setSubmittedAmount(amount);
       setResult(response);
       setShowStepUp(false);
       onComplete();
@@ -62,7 +79,11 @@ export function Simulator({ onComplete }: { onComplete: () => void }) {
       <Card className="p-6">
         <p className="text-xs font-bold uppercase tracking-wide text-primary">Live demo injector</p>
         <h2 className="text-[30px] font-bold">Test the safety engine</h2>
-        <p className="leading-relaxed text-muted">Inject a UPI-like debit and watch the server explain whether it posts or blocks. You'll confirm with a one-time code first, just like a real payment would ask.</p>
+        <p className="leading-relaxed text-muted">Inject a UPI-like debit and watch the server explain whether it posts or blocks — a posted debit really moves money out of your balance below, just like a real payment. You'll confirm with a one-time code first.</p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button onClick={() => applyPreset("normal")} className="rounded-full border border-border bg-white px-3.5 py-2 text-xs font-semibold text-ink hover:bg-paper">Everyday payment (posts)</button>
+          <button onClick={() => applyPreset("risky")} className="rounded-full border border-border bg-white px-3.5 py-2 text-xs font-semibold text-ink hover:bg-paper">Risky transfer (blocked)</button>
+        </div>
         <div className="mt-5.5 grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
           {FIELDS.map(([key, label]) => (
             <label key={key} className="text-xs font-bold">{label}
@@ -76,8 +97,10 @@ export function Simulator({ onComplete }: { onComplete: () => void }) {
         </div>
         {error && <p className="mt-4 text-danger">{error}</p>}
         {result && (
-          <div className="mt-4.5 rounded-lg bg-primary-light p-4">
-            <strong>Status:</strong> {result.status}<br /><strong>Fraud score:</strong> {result.fraud_score}<br /><strong>Category:</strong> {result.category}
+          <div className={`mt-4.5 rounded-lg p-4 ${result.status === "posted" ? "bg-success-light" : "bg-danger-light"}`}>
+            <p className="m-0 font-bold">{result.status === "posted" ? `− ${money(submittedAmount ?? 0)} debited` : "Blocked — no money moved"}</p>
+            <p className="mt-1 text-sm text-muted">{result.status === "posted" ? `New balance: ${money(balance)}` : "Your balance is protected until this is confirmed safe."}</p>
+            <p className="mt-2 text-xs text-muted">Fraud score {result.fraud_score} · Category {result.category}</p>
           </div>
         )}
         <Button onClick={() => setShowStepUp(true)} className="mt-5">

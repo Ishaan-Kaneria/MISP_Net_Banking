@@ -10,7 +10,7 @@ from reportlab.platypus import ListFlowable, ListItem, PageBreak, Paragraph, Pre
 
 ROOT = Path(__file__).resolve().parent
 SOURCE = ROOT / "PROJECT_COMPLETION_PLAN.md"
-OUTPUT = ROOT / "arth-ai-completion-plan.pdf"
+OUTPUT = ROOT / "misp-bank-completion-plan.pdf"
 
 styles = getSampleStyleSheet()
 styles.add(ParagraphStyle(name="CoverTitle", parent=styles["Title"], fontName="Helvetica-Bold", fontSize=28, leading=32, textColor=colors.HexColor("#182a3a"), alignment=TA_CENTER, spaceAfter=8))
@@ -37,14 +37,14 @@ def footer(canvas, doc):
     canvas.line(16 * mm, 13 * mm, A4[0] - 16 * mm, 13 * mm)
     canvas.setFont("Helvetica", 7.5)
     canvas.setFillColor(colors.HexColor("#586a73"))
-    canvas.drawString(16 * mm, 8 * mm, "Arth-AI | Project Completion Plan")
+    canvas.drawString(16 * mm, 8 * mm, "MISP Bank | Project Completion Plan")
     canvas.drawRightString(A4[0] - 16 * mm, 8 * mm, f"Page {doc.page}")
     canvas.restoreState()
 
 
 def build():
     lines = SOURCE.read_text(encoding="utf-8").splitlines()
-    story = [Spacer(1, 25 * mm), Paragraph("ARTH-AI", styles["CoverTitle"]), Paragraph("PROJECT COMPLETION PLAN", styles["CoverSub"]), Paragraph("What is complete, what remains, and the exact path to a submission-ready build.", styles["BodyCustom"]), Spacer(1, 8 * mm)]
+    story = [Spacer(1, 25 * mm), Paragraph("MISP BANK", styles["CoverTitle"]), Paragraph("PROJECT COMPLETION PLAN", styles["CoverSub"]), Paragraph("What is complete, what remains, and the exact path to a submission-ready build.", styles["BodyCustom"]), Spacer(1, 8 * mm)]
     in_code = False
     code_lines = []
     bullets = []
@@ -85,7 +85,7 @@ def build():
             story.append(Paragraph(inline(line), styles["BodyCustom"]))
     if bullets:
         story.append(ListFlowable(bullets, bulletType="bullet", start="circle", leftIndent=14))
-    doc = SimpleDocTemplate(str(OUTPUT), pagesize=A4, rightMargin=16 * mm, leftMargin=16 * mm, topMargin=16 * mm, bottomMargin=18 * mm, title="Arth-AI Project Completion Plan", author="Arth-AI")
+    doc = SimpleDocTemplate(str(OUTPUT), pagesize=A4, rightMargin=16 * mm, leftMargin=16 * mm, topMargin=16 * mm, bottomMargin=18 * mm, title="MISP Bank Project Completion Plan", author="MISP Bank")
     doc.build(story, onFirstPage=footer, onLaterPages=footer)
 
 

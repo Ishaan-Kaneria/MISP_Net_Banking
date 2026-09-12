@@ -41,7 +41,7 @@ export function Explain({ data }: { data: Dashboard }) {
     <div className="mt-7 animate-rise">
       <Card className="p-6">
         <p className="text-xs font-bold uppercase tracking-wide text-primary">Auditor view</p>
-        <h2 className="text-[30px] font-bold">Why Arth-AI chose this path</h2>
+        <h2 className="text-[30px] font-bold">Why MISP Bank chose this path</h2>
         <p className="leading-relaxed text-muted">The system combines rolling behavior, transaction context, and hard safety rules. The assistant cannot override this gate.</p>
         {userError && <p role="alert" className="mt-3 text-sm text-danger">{userError}</p>}
         <div className="mt-6">

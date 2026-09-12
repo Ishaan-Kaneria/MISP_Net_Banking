@@ -44,7 +44,7 @@ export function Kyc({ onComplete }: { onComplete: () => void }) {
         </div>
         <label className="mt-7 flex items-start gap-3 text-sm leading-relaxed text-ink">
           <input type="checkbox" checked={consent} onChange={event => setConsent(event.target.checked)} className="mt-1 accent-primary" />
-          I consent to Arth-AI verifying this document for account onboarding and storing a timestamped consent record.
+          I consent to MISP Bank verifying this document for account onboarding and storing a timestamped consent record.
         </label>
         {error && <p className="mt-3 text-sm text-danger">{error}</p>}
         <Button onClick={() => void submit()} disabled={!consent || submitting} className="mt-6 w-full">

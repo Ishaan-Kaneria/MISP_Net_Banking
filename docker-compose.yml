@@ -2,15 +2,15 @@ services:
   db:
     image: pgvector/pgvector:pg16
     environment:
-      POSTGRES_USER: arthai
-      POSTGRES_PASSWORD: arthai
-      POSTGRES_DB: arthai
+      POSTGRES_USER: mispbank
+      POSTGRES_PASSWORD: mispbank
+      POSTGRES_DB: mispbank
     ports:
       - "5432:5432"
     volumes:
-      - arthai_pgdata:/var/lib/postgresql/data
+      - mispbank_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U arthai -d arthai"]
+      test: ["CMD-SHELL", "pg_isready -U mispbank -d mispbank"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -18,7 +18,7 @@ services:
   api:
     build: ./backend
     environment:
-      DATABASE_URL: postgresql+psycopg://arthai:arthai@db:5432/arthai
+      DATABASE_URL: postgresql+psycopg://mispbank:mispbank@db:5432/mispbank
       JWT_SECRET: change-me-in-production
       CORS_ORIGINS: http://localhost:3000
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
@@ -39,4 +39,4 @@ services:
       - api
 
 volumes:
-  arthai_pgdata:
+  mispbank_pgdata:

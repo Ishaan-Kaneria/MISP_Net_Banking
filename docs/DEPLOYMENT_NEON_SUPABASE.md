@@ -1,4 +1,4 @@
-# Arth-AI Deployment Guide: Neon or Supabase
+# MISP Bank Deployment Guide: Neon or Supabase
 
 ## Recommendation
 
@@ -39,7 +39,7 @@ Create or verify these accounts:
 
 1. Open `https://console.neon.tech`.
 2. Create a project.
-3. Project name: `arthai`.
+3. Project name: `mispbank`.
 4. Select the closest region.
 5. Use the free plan if it is available to your account.
 6. Open the project dashboard and choose **Connect**.
@@ -75,7 +75,7 @@ Do not paste this value into frontend code. Do not commit it to GitHub.
 ### Create the database
 
 1. Open `https://supabase.com/dashboard`.
-2. Create a new project named `arthai`.
+2. Create a new project named `mispbank`.
 3. Choose a nearby region.
 4. Create a strong database password and store it safely.
 5. Wait for the project to finish provisioning.
@@ -182,13 +182,13 @@ Do not put `DATABASE_URL`, `JWT_SECRET`, or `GEMINI_API_KEY` in GitHub files. Ad
 After deployment, copy the backend URL. It will look similar to:
 
 ```text
-https://arthai-api.REGION.azurecontainerapps.io
+https://mispbank-api.REGION.azurecontainerapps.io
 ```
 
 Test:
 
 ```text
-https://arthai-api.REGION.azurecontainerapps.io/health
+https://mispbank-api.REGION.azurecontainerapps.io/health
 ```
 
 ## Frontend Deployment

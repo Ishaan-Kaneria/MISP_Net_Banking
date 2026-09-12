@@ -65,7 +65,7 @@ export function AddMoneyModal({ userName, onClose, onSuccess }: { userName: stri
         amount: order.amount,
         currency: order.currency,
         order_id: order.order_id,
-        name: "Arth-AI",
+        name: "MISP Bank",
         description: "Add money to your account",
         prefill: { name: userName },
         theme: { color: "#0b57b0" },

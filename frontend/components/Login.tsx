@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowUpRight, CheckCircle2, ShieldCheck } from "lucide-react";
+import { ArrowUpRight, CheckCircle2 } from "lucide-react";
 import { api, ApiError } from "../lib/api";
 import { Button, Input } from "./ui";
 
@@ -23,7 +23,7 @@ export function Login({ onLogin }: { onLogin: () => void }) {
       setSubmitting(true);
       setError("");
       const result = await api<{ access_token: string }>("/auth/login", { method: "POST", body: JSON.stringify({ phone, pin }) });
-      localStorage.setItem("arthai_token", result.access_token);
+      localStorage.setItem("mispbank_token", result.access_token);
       onLogin();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Unable to sign in");
@@ -37,7 +37,8 @@ export function Login({ onLogin }: { onLogin: () => void }) {
       <section className="grid w-full max-w-4xl animate-rise grid-cols-1 overflow-hidden rounded-2xl bg-white shadow-pop md:grid-cols-2">
         <div className="flex flex-col gradient-navy-diagonal p-8 text-white md:p-10">
           <div className="flex items-center gap-2.5 text-sm font-bold tracking-wide">
-            <ShieldCheck size={22} className="text-[#79b3ff]" /> ARTH-AI NET BANKING
+            {/* eslint-disable-next-line @next/next/no-img-element -- a tiny static brand mark, not worth next/image's runtime for */}
+            <img src="/logo.svg" alt="" width={22} height={22} /> MISP BANK NET BANKING
           </div>
           <h1 className="mt-8 text-3xl font-bold leading-tight md:mt-10 md:text-4xl">
             Money that<br /><span className="text-[#79b3ff]">understands life.</span>
