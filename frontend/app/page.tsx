@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
-import { ArrowUpRight, Bell, ChevronRight, CircleHelp, IndianRupee, LayoutDashboard, MessageCircle, ShieldCheck, WalletCards, Zap } from "lucide-react";
+import { AlertCircle, ArrowUpRight, Bell, CheckCircle2, ChevronRight, CircleHelp, Clock3, IndianRupee, LayoutDashboard, MessageCircle, ShieldCheck, TrendingUp, WalletCards, X, Zap } from "lucide-react";
 import { api } from "../lib/api";
 
 type Dashboard = {
@@ -157,6 +157,27 @@ function Alerts({ data }: { data: Dashboard }) {
   );
 }
 
+function RailAlerts({ data, onSelect }: { data: Dashboard; onSelect: (view: string) => void }) {
+  return <section className="rail-section">
+    <div className="rail-heading"><span><AlertCircle size={15} /> Security alerts</span><button onClick={() => onSelect('Alerts')}>View all</button></div>
+    {data.alerts.length ? data.alerts.slice(0, 3).map(alert => <div className="rail-alert" key={alert.id}>
+      <span className={`rail-alert-icon ${alert.type === 'fraud' ? 'danger' : 'notice'}`}><AlertCircle size={15} /></span>
+      <div><strong>{alert.type === 'fraud' ? 'Payment protection' : 'Cash-flow support'}</strong><p>{alert.message_en}</p></div>
+    </div>) : <div className="rail-empty"><CheckCircle2 size={17} /><span>No active alerts. Your account is clear.</span></div>}
+  </section>;
+}
+
+function RailOffers({ data, onSelect }: { data: Dashboard; onSelect: (view: string) => void }) {
+  return <section className="rail-section">
+    <div className="rail-heading"><span><TrendingUp size={15} /> For you</span><button onClick={() => onSelect('Offers')}>See all</button></div>
+    {data.offers.length ? data.offers.slice(0, 3).map(offer => <button className="rail-offer" key={offer.id} onClick={() => onSelect('Offers')}>
+      <span className="offer-mark"><IndianRupee size={15} /></span>
+      <span><strong>{offer.product_code.replace('_', ' ')}</strong><small>{offer.blocked_by_ethics ? 'Paused by safety rules' : offer.reason}</small></span>
+      <ChevronRight size={15} />
+    </button>) : <div className="rail-empty"><Clock3 size={17} /><span>Recommendations will appear as your account evolves.</span></div>}
+  </section>;
+}
+
 function Conversation({ chat, reply, ask, language, setLanguage }: { chat: string; reply: string; ask: (message: string) => void; language: string; setLanguage: (language: string) => void }) {
   const [message, setMessage] = useState('');
   const suggestions = language === 'hi'
@@ -293,6 +314,7 @@ function App() {
   const [reply, setReply] = useState('');
   const [language, setLanguage] = useState('en');
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState<{ title: string; message: string } | null>(null);
 
   const load = async () => {
     try {
@@ -309,6 +331,15 @@ function App() {
     if (localStorage.getItem('arthai_token')) void load();
     else setLoading(false);
   }, []);
+
+  useEffect(() => {
+    if (data?.alerts.length) {
+      const alert = data.alerts[0];
+      setToast({ title: alert.type === 'fraud' ? 'Payment protection alert' : 'Account support update', message: alert.message_en });
+      const timer = window.setTimeout(() => setToast(null), 7000);
+      return () => window.clearTimeout(timer);
+    }
+  }, [data?.alerts]);
 
   if (!authReady) return <main style={{ padding: 40 }}>Preparing your account...</main>;
   if (!localStorage.getItem('arthai_token') && !data) return <Login onLogin={load} />;
@@ -327,24 +358,26 @@ function App() {
 
   return (
     <main className="app-grid">
+      {toast && <div className="toast" role="status"><span className="toast-icon"><Bell size={17} /></span><span><strong>{toast.title}</strong><small>{toast.message}</small></span><button aria-label="Dismiss alert" onClick={() => setToast(null)}><X size={16} /></button></div>}
       <div className="shell">
-        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 18, marginBottom: 46 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 700, letterSpacing: '.04em' }}>
-            <span style={{ background: 'var(--teal)', color: 'white', padding: 8, borderRadius: 8 }}><ShieldCheck size={18} /></span> ARTH-AI
+        <header className="topbar">
+          <div className="brand-lockup">
+            <span className="brand-icon"><ShieldCheck size={17} /></span><span>ARTH-AI</span><span className="brand-divider" /> <span className="brand-context">Personal banking</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+          <div className="top-actions">
+            <span className="secure-label"><ShieldCheck size={14} /> Secure session</span>
             <span className="nav-link">EN / HI / GU</span>
-            <button onClick={() => { localStorage.removeItem('arthai_token'); location.reload(); }} style={{ border: 0, background: 'transparent', color: 'var(--muted)', cursor: 'pointer' }}>Sign out</button>
+            <button className="signout" onClick={() => { localStorage.removeItem('arthai_token'); location.reload(); }}>Sign out</button>
           </div>
         </header>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 260px', gap: 46 }}>
+        <div className="dashboard-grid">
           <section>
-            <p style={{ color: 'var(--teal)', fontSize: 13, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase' }}>Good morning, {dashboard.user.name.split(' ')[0]}</p>
-            <h1 className="display" style={{ fontSize: 'clamp(38px, 6vw, 66px)', lineHeight: 1, margin: '10px 0 18px', fontWeight: 600 }}>Your money,<br /><span style={{ color: 'var(--teal)' }}>in context.</span></h1>
-            <p style={{ maxWidth: 500, color: 'var(--muted)', lineHeight: 1.6 }}>A clear view of where you stand today, with decisions shaped around your real life.</p>
+            <div className="welcome-row"><div><p className="eyebrow">PERSONAL OVERVIEW</p><h1 className="bank-title">Good morning, {dashboard.user.name.split(' ')[0]}</h1><p className="welcome-copy">Here is your financial picture for today, shaped around your {dashboard.segment.toLowerCase().replace('_', ' ')} journey.</p></div><span className="date-stamp">12 September 2026</span></div>
 
-            <nav style={{ display: 'flex', gap: 20, borderBottom: '1px solid var(--line)', marginTop: 42, overflowX: 'auto' }}>
+            <div className="balance-hero"><div><span className="balance-label">TOTAL AVAILABLE BALANCE</span><strong>{money(dashboard.balance)}</strong><p><span className="positive-dot" /> Your account is {dashboard.stress_flag ? 'under review for support' : 'in a stable position'}</p></div><div className="balance-meta"><span>Account ending</span><strong>•••• 0001</strong><span>Last updated just now</span></div></div>
+
+            <nav className="dashboard-nav">
               {nav.map(({ label, icon: Icon }) => (
                 <button key={label} onClick={() => setView(label)} style={{ whiteSpace: 'nowrap', padding: '0 0 14px', border: 0, borderBottom: view === label ? '2px solid var(--teal)' : '2px solid transparent', background: 'transparent', color: view === label ? 'var(--teal)' : 'var(--muted)', fontWeight: 700, cursor: 'pointer', display: 'flex', gap: 7, alignItems: 'center' }}><Icon size={16} />{label}</button>
               ))}
@@ -358,28 +391,10 @@ function App() {
             {view === 'Simulator' && <Simulator onComplete={load} />}
           </section>
 
-          <aside style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-            <div className="card" style={{ padding: 18, position: 'sticky', top: 18 }}>
-              <p style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', fontSize: 11, margin: 0 }}>Account balance</p>
-              <h2 className="display" style={{ fontSize: 34, margin: '12px 0 6px' }}>{money(dashboard.balance)}</h2>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--muted)' }}>
-                <span>{dashboard.segment}</span>
-                <span style={{ color: dashboard.stress_flag ? 'var(--gold)' : 'var(--teal)', fontWeight: 700 }}>{dashboard.stress_flag ? 'Stress mode' : 'Stable'}</span>
-              </div>
-            </div>
-
-            <div className="card" style={{ padding: 18 }}>
-              <p style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', fontSize: 11, margin: '0 0 14px' }}>Support</p>
-              {dashboard.offers.slice(0, 3).map(offer => (
-                <div key={offer.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--line)' }}>
-                  <div>
-                    <strong>{offer.product_code.replace('_', ' ')}</strong>
-                    <div style={{ color: 'var(--muted)', fontSize: 12 }}>{offer.blocked_by_ethics ? 'Paused by ethics' : 'Recommended'}</div>
-                  </div>
-                  <ChevronRight size={16} color="var(--muted)" />
-                </div>
-              ))}
-            </div>
+          <aside className="right-rail">
+            <div className="rail-account"><div className="rail-account-top"><span>ACCOUNT HEALTH</span><span className="health-dot" /></div><strong>{dashboard.stress_flag ? 'Support mode' : 'Looking good'}</strong><p>{dashboard.stress_flag ? 'We are keeping credit decisions paused while we protect your cash flow.' : 'Your spending and saving rhythm is currently stable.'}</p><div className="health-bar"><span style={{ width: dashboard.stress_flag ? '48%' : '78%' }} /></div></div>
+            <RailAlerts data={dashboard} onSelect={setView} />
+            <RailOffers data={dashboard} onSelect={setView} />
           </aside>
         </div>
       </div>
