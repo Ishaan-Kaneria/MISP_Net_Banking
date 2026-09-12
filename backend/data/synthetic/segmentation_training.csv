@@ -1,0 +1,10 @@
+case_id,spend_30d,savings_rate,missed_emi,hospital_spend,unique_payees,salary_amount,velocity,entertainment_spend,expected_segment
+segment-case-001,12000,0.1,0,0,4,18000,2,500,FIRST_JOB
+segment-case-002,45000,0.18,0,7000,8,65000,5,900,MARRIAGE
+segment-case-003,30000,0.05,0,24000,5,30000,3,700,MEDICAL
+segment-case-004,42000,-0.3,1,0,12,28000,5,900,STRESS
+segment-case-005,18000,0.32,0,0,4,28000,2,400,SAVER
+segment-case-006,60000,0.08,0,0,30,60000,20,1800,HIGH_VELOCITY
+segment-case-007,24000,0.02,0,0,7,24000,5,600,BASELINE
+segment-boundary-zero,0,0,0,0,0,0,0,0,BASELINE
+segment-conflicting-stress,1000,0.5,1,0,1,10000,1,0,STRESS

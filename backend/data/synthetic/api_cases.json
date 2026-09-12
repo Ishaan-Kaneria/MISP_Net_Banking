@@ -1,0 +1,86 @@
+[
+  {
+    "case_id": "api-login-valid",
+    "method": "POST",
+    "path": "/auth/login",
+    "body": {
+      "phone": "9000000001",
+      "pin": "1234"
+    },
+    "expected_status": 200
+  },
+  {
+    "case_id": "api-login-invalid-pin",
+    "method": "POST",
+    "path": "/auth/login",
+    "body": {
+      "phone": "9000000001",
+      "pin": "0000"
+    },
+    "expected_status": 401
+  },
+  {
+    "case_id": "api-kyc-no-consent",
+    "method": "POST",
+    "path": "/kyc/verify",
+    "body": {
+      "doc_type": "pan",
+      "consent": false
+    },
+    "expected_status": 400
+  },
+  {
+    "case_id": "api-txn-negative",
+    "method": "POST",
+    "path": "/txn",
+    "body": {
+      "amount": -1,
+      "direction": "debit"
+    },
+    "expected_status": 422
+  },
+  {
+    "case_id": "api-txn-invalid-direction",
+    "method": "POST",
+    "path": "/txn",
+    "body": {
+      "amount": 1,
+      "direction": "refund"
+    },
+    "expected_status": 422
+  },
+  {
+    "case_id": "api-txn-no-auth",
+    "method": "POST",
+    "path": "/txn",
+    "body": {
+      "amount": 1,
+      "direction": "debit"
+    },
+    "expected_status": 401
+  },
+  {
+    "case_id": "api-dashboard-no-auth",
+    "method": "GET",
+    "path": "/dashboard",
+    "body": null,
+    "expected_status": 401
+  },
+  {
+    "case_id": "api-chat-empty",
+    "method": "POST",
+    "path": "/chat",
+    "body": {
+      "message": "",
+      "lang": "en"
+    },
+    "expected_status": 401
+  },
+  {
+    "case_id": "api-health",
+    "method": "GET",
+    "path": "/health",
+    "body": null,
+    "expected_status": 200
+  }
+]

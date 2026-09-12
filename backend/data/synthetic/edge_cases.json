@@ -1,0 +1,85 @@
+[
+  {
+    "case_id": "edge-zero-amount",
+    "field": "amount",
+    "value": 0,
+    "expected": "422:must be greater than zero"
+  },
+  {
+    "case_id": "edge-negative-amount",
+    "field": "amount",
+    "value": -1,
+    "expected": "422:must be greater than zero"
+  },
+  {
+    "case_id": "edge-decimal-amount",
+    "field": "amount",
+    "value": "0.01",
+    "expected": "valid positive decimal"
+  },
+  {
+    "case_id": "edge-invalid-direction",
+    "field": "direction",
+    "value": "refund",
+    "expected": "422:pattern mismatch"
+  },
+  {
+    "case_id": "edge-missing-payee",
+    "field": "payee",
+    "value": null,
+    "expected": "schema default or nullable behavior must be verified"
+  },
+  {
+    "case_id": "edge-missing-mcc",
+    "field": "mcc",
+    "value": null,
+    "expected": "valid optional field"
+  },
+  {
+    "case_id": "edge-null-location",
+    "field": "lat_lng",
+    "value": null,
+    "expected": "valid optional location"
+  },
+  {
+    "case_id": "edge-night-boundary",
+    "field": "hour_ist",
+    "value": [
+      4,
+      5,
+      21,
+      22
+    ],
+    "expected": "night is hour <5 or >=22"
+  },
+  {
+    "case_id": "edge-auth-missing",
+    "field": "authorization",
+    "value": null,
+    "expected": "401:AUTH_REQUIRED"
+  },
+  {
+    "case_id": "edge-auth-malformed",
+    "field": "authorization",
+    "value": "Bearer invalid",
+    "expected": "401:INVALID_TOKEN"
+  },
+  {
+    "case_id": "edge-kyc-no-consent",
+    "field": "consent",
+    "value": false,
+    "expected": "400:CONSENT_REQUIRED"
+  },
+  {
+    "case_id": "edge-stress-credit",
+    "field": "offer",
+    "value": "PERSONAL_LOAN",
+    "expected": "blocked_by_ethics=true"
+  },
+  {
+    "case_id": "edge-stress-grace",
+    "field": "offer",
+    "value": "GRACE_PERIOD",
+    "expected": "available"
+  }
+]

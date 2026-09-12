@@ -1,0 +1,526 @@
+{
+  "fraud_cases": [
+    {
+      "case_id": "fraud-case-001",
+      "case_name": "safe",
+      "amount": 1000,
+      "km_from_last": 10,
+      "same_device": true,
+      "velocity_2m": 0,
+      "category": "UPI_GROCERY",
+      "is_night": false,
+      "hard_reasons": [],
+      "expected_status": "posted",
+      "expected_alert": false,
+      "model_features": {
+        "amount": 1000,
+        "log_amount": 6.90875477931522,
+        "hour": 12,
+        "is_night": 0,
+        "km_from_last": 10,
+        "same_device": 1,
+        "velocity_2m": 0
+      }
+    },
+    {
+      "case_id": "fraud-case-002",
+      "case_name": "geo_exact_distance",
+      "amount": 15001,
+      "km_from_last": 250,
+      "same_device": true,
+      "velocity_2m": 0,
+      "category": "UNKNOWN",
+      "is_night": false,
+      "hard_reasons": [],
+      "expected_status": "posted",
+      "expected_alert": false,
+      "model_features": {
+        "amount": 15001,
+        "log_amount": 9.615938804529582,
+        "hour": 12,
+        "is_night": 0,
+        "km_from_last": 250,
+        "same_device": 1,
+        "velocity_2m": 0
+      }
+    },
+    {
+      "case_id": "fraud-case-003",
+      "case_name": "geo_below_amount",
+      "amount": 15000,
+      "km_from_last": 300,
+      "same_device": true,
+      "velocity_2m": 0,
+      "category": "UNKNOWN",
+      "is_night": false,
+      "hard_reasons": [],
+      "expected_status": "posted",
+      "expected_alert": false,
+      "model_features": {
+        "amount": 15000,
+        "log_amount": 9.61587214452889,
+        "hour": 12,
+        "is_night": 0,
+        "km_from_last": 300,
+        "same_device": 1,
+        "velocity_2m": 0
+      }
+    },
+    {
+      "case_id": "fraud-case-004",
+      "case_name": "geo_above",
+      "amount": 15001,
+      "km_from_last": 251,
+      "same_device": true,
+      "velocity_2m": 0,
+      "category": "UNKNOWN",
+      "is_night": false,
+      "hard_reasons": [
+        "GEO_JUMP_HIGH_VALUE"
+      ],
+      "expected_status": "blocked",
+      "expected_alert": true,
+      "model_features": {
+        "amount": 15001,
+        "log_amount": 9.615938804529582,
+        "hour": 12,
+        "is_night": 0,
+        "km_from_last": 251,
+        "same_device": 1,
+        "velocity_2m": 0
+      }
+    },
+    {
+      "case_id": "fraud-case-005",
+      "case_name": "velocity_below",
+      "amount": 1000,
+      "km_from_last": 0,
+      "same_device": true,
+      "velocity_2m": 4,
+      "category": "UNKNOWN",
+      "is_night": false,
+      "hard_reasons": [],
+      "expected_status": "posted",
+      "expected_alert": false,
+      "model_features": {
+        "amount": 1000,
+        "log_amount": 6.90875477931522,
+        "hour": 12,
+        "is_night": 0,
+        "km_from_last": 0,
+        "same_device": 1,
+        "velocity_2m": 4
+      }
+    },
+    {
+      "case_id": "fraud-case-006",
+      "case_name": "velocity_exact",
+      "amount": 1000,
+      "km_from_last": 0,
+      "same_device": true,
+      "velocity_2m": 5,
+      "category": "UNKNOWN",
+      "is_night": false,
+      "hard_reasons": [
+        "VELOCITY_5_DEBITS_2M"
+      ],
+      "expected_status": "blocked",
+      "expected_alert": true,
+      "model_features": {
+        "amount": 1000,
+        "log_amount": 6.90875477931522,
+        "hour": 12,
+        "is_night": 0,
+        "km_from_last": 0,
+        "same_device": 1,
+        "velocity_2m": 5
+      }
+    },
+    {
+      "case_id": "fraud-case-007",
+      "case_name": "new_device_exact_amount",
+      "amount": 20000,
+      "km_from_last": 0,
+      "same_device": false,
+      "velocity_2m": 0,
+      "category": "UNKNOWN",
+      "is_night": false,
+      "hard_reasons": [],
+      "expected_status": "posted",
+      "expected_alert": false,
+      "model_features": {
+        "amount": 20000,
+        "log_amount": 9.90353755128617,
+        "hour": 12,
+        "is_night": 0,
+        "km_from_last": 0,
+        "same_device": 0,
+        "velocity_2m": 0
+      }
+    },
+    {
+      "case_id": "fraud-case-008",
+      "case_name": "new_device_above",
+      "amount": 20001,
+      "km_from_last": 0,
+      "same_device": false,
+      "velocity_2m": 0,
+      "category": "UNKNOWN",
+      "is_night": false,
+      "hard_reasons": [
+        "NEW_DEVICE_HIGH_VALUE"
+      ],
+      "expected_status": "blocked",
+      "expected_alert": true,
+      "model_features": {
+        "amount": 20001,
+        "log_amount": 9.90358754753646,
+        "hour": 12,
+        "is_night": 0,
+        "km_from_last": 0,
+        "same_device": 0,
+        "velocity_2m": 0
+      }
+    },
+    {
+      "case_id": "fraud-case-009",
+      "case_name": "watchlist",
+      "amount": 100,
+      "km_from_last": 0,
+      "same_device": true,
+      "velocity_2m": 0,
+      "category": "WATCHLIST",
+      "is_night": false,
+      "hard_reasons": [
+        "WATCHLIST_PAYEE"
+      ],
+      "expected_status": "blocked",
+      "expected_alert": true,
+      "model_features": {
+        "amount": 100,
+        "log_amount": 4.61512051684126,
+        "hour": 12,
+        "is_night": 0,
+        "km_from_last": 0,
+        "same_device": 1,
+        "velocity_2m": 0
+      }
+    },
+    {
+      "case_id": "fraud-case-010",
+      "case_name": "night_exact",
+      "amount": 40000,
+      "km_from_last": 0,
+      "same_device": true,
+      "velocity_2m": 0,
+      "category": "UNKNOWN",
+      "is_night": true,
+      "hard_reasons": [],
+      "expected_status": "review",
+      "expected_alert": false,
+      "model_features": {
+        "amount": 40000,
+        "log_amount": 10.596659732783579,
+        "hour": 23,
+        "is_night": 1,
+        "km_from_last": 0,
+        "same_device": 1,
+        "velocity_2m": 0
+      }
+    },
+    {
+      "case_id": "fraud-case-011",
+      "case_name": "night_above",
+      "amount": 40001,
+      "km_from_last": 0,
+      "same_device": true,
+      "velocity_2m": 0,
+      "category": "UNKNOWN",
+      "is_night": true,
+      "hard_reasons": [
+        "NIGHT_HIGH_VALUE"
+      ],
+      "expected_status": "blocked",
+      "expected_alert": true,
+      "model_features": {
+        "amount": 40001,
+        "log_amount": 10.596684731846114,
+        "hour": 23,
+        "is_night": 1,
+        "km_from_last": 0,
+        "same_device": 1,
+        "velocity_2m": 0
+      }
+    },
+    {
+      "case_id": "fraud-case-012",
+      "case_name": "multiple_rules",
+      "amount": 48000,
+      "km_from_last": 500,
+      "same_device": false,
+      "velocity_2m": 5,
+      "category": "WATCHLIST",
+      "is_night": true,
+      "hard_reasons": [
+        "GEO_JUMP_HIGH_VALUE",
+        "VELOCITY_5_DEBITS_2M",
+        "NEW_DEVICE_HIGH_VALUE",
+        "WATCHLIST_PAYEE",
+        "NIGHT_HIGH_VALUE"
+      ],
+      "expected_status": "blocked",
+      "expected_alert": true,
+      "model_features": {
+        "amount": 48000,
+        "log_amount": 10.778977123006351,
+        "hour": 23,
+        "is_night": 1,
+        "km_from_last": 500,
+        "same_device": 0,
+        "velocity_2m": 5
+      }
+    },
+    {
+      "case_id": "fraud-case-013",
+      "case_name": "missing_previous_location",
+      "amount": 25000,
+      "km_from_last": 0,
+      "same_device": false,
+      "velocity_2m": 0,
+      "category": "UNKNOWN",
+      "is_night": false,
+      "hard_reasons": [
+        "NEW_DEVICE_HIGH_VALUE"
+      ],
+      "expected_status": "blocked",
+      "expected_alert": true,
+      "model_features": {
+        "amount": 25000,
+        "log_amount": 10.12667110305036,
+        "hour": 12,
+        "is_night": 0,
+        "km_from_last": 0,
+        "same_device": 0,
+        "velocity_2m": 0
+      }
+    }
+  ],
+  "segment_cases": [
+    {
+      "case_id": "segment-case-001",
+      "customer_id": "segment-customer-001",
+      "spend_30d": 12000,
+      "savings_rate": 0.1,
+      "missed_emi": 0,
+      "hospital_spend": 0,
+      "unique_payees": 4,
+      "salary_amount": 18000,
+      "velocity": 2,
+      "entertainment_spend": 500,
+      "expected_segment": "FIRST_JOB",
+      "expected_stress_flag": false,
+      "segment_reason": "canonical first_job behavior"
+    },
+    {
+      "case_id": "segment-case-002",
+      "customer_id": "segment-customer-002",
+      "spend_30d": 45000,
+      "savings_rate": 0.18,
+      "missed_emi": 0,
+      "hospital_spend": 7000,
+      "unique_payees": 8,
+      "salary_amount": 65000,
+      "velocity": 5,
+      "entertainment_spend": 900,
+      "expected_segment": "MARRIAGE",
+      "expected_stress_flag": false,
+      "segment_reason": "canonical marriage behavior"
+    },
+    {
+      "case_id": "segment-case-003",
+      "customer_id": "segment-customer-003",
+      "spend_30d": 30000,
+      "savings_rate": 0.05,
+      "missed_emi": 0,
+      "hospital_spend": 24000,
+      "unique_payees": 5,
+      "salary_amount": 30000,
+      "velocity": 3,
+      "entertainment_spend": 700,
+      "expected_segment": "MEDICAL",
+      "expected_stress_flag": false,
+      "segment_reason": "canonical medical behavior"
+    },
+    {
+      "case_id": "segment-case-004",
+      "customer_id": "segment-customer-004",
+      "spend_30d": 42000,
+      "savings_rate": -0.3,
+      "missed_emi": 1,
+      "hospital_spend": 0,
+      "unique_payees": 12,
+      "salary_amount": 28000,
+      "velocity": 5,
+      "entertainment_spend": 900,
+      "expected_segment": "STRESS",
+      "expected_stress_flag": true,
+      "segment_reason": "canonical stress behavior"
+    },
+    {
+      "case_id": "segment-case-005",
+      "customer_id": "segment-customer-005",
+      "spend_30d": 18000,
+      "savings_rate": 0.32,
+      "missed_emi": 0,
+      "hospital_spend": 0,
+      "unique_payees": 4,
+      "salary_amount": 28000,
+      "velocity": 2,
+      "entertainment_spend": 400,
+      "expected_segment": "SAVER",
+      "expected_stress_flag": false,
+      "segment_reason": "canonical saver behavior"
+    },
+    {
+      "case_id": "segment-case-006",
+      "customer_id": "segment-customer-006",
+      "spend_30d": 60000,
+      "savings_rate": 0.08,
+      "missed_emi": 0,
+      "hospital_spend": 0,
+      "unique_payees": 30,
+      "salary_amount": 60000,
+      "velocity": 20,
+      "entertainment_spend": 1800,
+      "expected_segment": "HIGH_VELOCITY",
+      "expected_stress_flag": false,
+      "segment_reason": "canonical high_velocity behavior"
+    },
+    {
+      "case_id": "segment-case-007",
+      "customer_id": "segment-customer-007",
+      "spend_30d": 24000,
+      "savings_rate": 0.02,
+      "missed_emi": 0,
+      "hospital_spend": 0,
+      "unique_payees": 7,
+      "salary_amount": 24000,
+      "velocity": 5,
+      "entertainment_spend": 600,
+      "expected_segment": "BASELINE",
+      "expected_stress_flag": false,
+      "segment_reason": "canonical baseline behavior"
+    },
+    {
+      "case_id": "segment-boundary-zero",
+      "customer_id": "segment-customer-008",
+      "spend_30d": 0,
+      "savings_rate": 0,
+      "missed_emi": 0,
+      "hospital_spend": 0,
+      "unique_payees": 0,
+      "salary_amount": 0,
+      "velocity": 0,
+      "entertainment_spend": 0,
+      "expected_segment": "BASELINE",
+      "expected_stress_flag": false,
+      "segment_reason": "all-zero cold start"
+    },
+    {
+      "case_id": "segment-conflicting-stress",
+      "customer_id": "segment-customer-009",
+      "spend_30d": 1000,
+      "savings_rate": 0.5,
+      "missed_emi": 1,
+      "hospital_spend": 0,
+      "unique_payees": 1,
+      "salary_amount": 10000,
+      "velocity": 1,
+      "entertainment_spend": 0,
+      "expected_segment": "STRESS",
+      "expected_stress_flag": true,
+      "segment_reason": "missed EMI takes precedence"
+    }
+  ],
+  "offer_cases": [
+    {
+      "category": "SALARY",
+      "segment": "SAVER",
+      "stress_flag": false,
+      "amount": 28000,
+      "spend_30d": 24000,
+      "expected_offers": [
+        [
+          "SIP",
+          "A steady salary can become a simple monthly SIP.",
+          false
+        ],
+        [
+          "EMI_CONVERT",
+          "Convert a large recent expense into manageable payments.",
+          false
+        ]
+      ]
+    },
+    {
+      "category": "HOSPITAL",
+      "segment": "MEDICAL",
+      "stress_flag": false,
+      "amount": 24000,
+      "spend_30d": 24000,
+      "expected_offers": [
+        [
+          "MICRO_INSURANCE",
+          "A small health cover can soften future medical shocks.",
+          false
+        ],
+        [
+          "EMI_CONVERT",
+          "Convert a large recent expense into manageable payments.",
+          false
+        ]
+      ]
+    },
+    {
+      "category": "UNKNOWN",
+      "segment": "STRESS",
+      "stress_flag": true,
+      "amount": 5000,
+      "spend_30d": 20000,
+      "expected_offers": [
+        [
+          "GRACE_PERIOD",
+          "Take a 15-day grace period while we protect your cash flow.",
+          false
+        ],
+        [
+          "PERSONAL_LOAN",
+          "Credit is paused while your financial stress is high.",
+          true
+        ]
+      ]
+    },
+    {
+      "category": "UNKNOWN",
+      "segment": "FIRST_JOB",
+      "stress_flag": false,
+      "amount": 5000,
+      "spend_30d": 20000,
+      "expected_offers": [
+        [
+          "STARTER_CREDIT",
+          "A small starter limit is available after your first salary.",
+          false
+        ]
+      ]
+    },
+    {
+      "category": "UNKNOWN",
+      "segment": "BASELINE",
+      "stress_flag": false,
+      "amount": 1000,
+      "spend_30d": 20000,
+      "expected_offers": []
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+category,segment,stress_flag,amount,spend_30d,expected_offers
+SALARY,SAVER,False,28000,24000,"[['SIP', 'A steady salary can become a simple monthly SIP.', False], ['EMI_CONVERT', 'Convert a large recent expense into manageable payments.', False]]"
+HOSPITAL,MEDICAL,False,24000,24000,"[['MICRO_INSURANCE', 'A small health cover can soften future medical shocks.', False], ['EMI_CONVERT', 'Convert a large recent expense into manageable payments.', False]]"
+UNKNOWN,STRESS,True,5000,20000,"[['GRACE_PERIOD', 'Take a 15-day grace period while we protect your cash flow.', False], ['PERSONAL_LOAN', 'Credit is paused while your financial stress is high.', True]]"
+UNKNOWN,FIRST_JOB,False,5000,20000,"[['STARTER_CREDIT', 'A small starter limit is available after your first salary.', False]]"
+UNKNOWN,BASELINE,False,1000,20000,[]

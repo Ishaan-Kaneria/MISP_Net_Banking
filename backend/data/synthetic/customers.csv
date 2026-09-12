@@ -1,0 +1,9 @@
+customer_id,name,phone,language,kyc_status,device_id,segment,life_stage,stress_flag,balance,spend_7d,spend_30d,savings_rate,salary_amount,emi_count,missed_emi_30d,hospital_spend,entertainment_spend,unique_payees_7d,night_txn_ratio,account_age_days,transaction_velocity,city_tier,age_band,occupation_group
+customer-0001,Ramesh Synthetic,9000000001,gu,verified,device-0001,SAVER,SAVER,False,28000,5250,25500,0.32,28000,4,0,0,640,4,0.02,720,2,TIER_2,26-35,SALARIED
+customer-0002,Priya Synthetic,9000000002,hi,pending,device-0002,FIRST_JOB,FIRST_JOB,False,18000,5500,27000,0.1,28000,1,0,0,680,6,0.02,30,2,TIER_1,26-35,FIRST_JOB
+customer-0003,Amit Synthetic,9000000003,hi,verified,device-0003,STRESS,STRESS,True,4500,5750,28500,-0.3,28000,4,1,0,720,12,0.22,720,2,TIER_2,26-35,SALARIED
+customer-0004,Meena Synthetic,9000000004,hi,verified,device-0004,MEDICAL,MEDICAL,False,22000,6000,30000,0.05,28000,1,0,24000,760,5,0.02,720,2,TIER_1,26-35,SALARIED
+customer-0005,Kiran Synthetic,9000000005,en,verified,device-0005,MARRIAGE,MARRIAGE,False,65000,6250,31500,0.18,28000,4,0,7000,800,8,0.02,720,2,TIER_2,26-35,SALARIED
+customer-0006,Dev Synthetic,9000000006,en,verified,device-0006,HIGH_VELOCITY,HIGH_VELOCITY,False,42000,6500,33000,0.08,60000,1,0,0,840,28,0.02,720,18,TIER_1,26-35,SALARIED
+customer-0007,Neha Synthetic,9000000007,hi,verified,device-0007,BASELINE,BASELINE,False,24000,6750,34500,0.02,28000,1,0,0,880,7,0.02,720,2,TIER_2,26-35,SALARIED
+customer-0008,Zero Synthetic,9000000008,en,verified,device-0008,BASELINE,BASELINE,False,0,7000,36000,0.0,28000,1,0,0,920,0,0.02,720,2,TIER_1,26-35,SALARIED

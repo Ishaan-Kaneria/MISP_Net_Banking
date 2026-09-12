@@ -1,0 +1,10 @@
+case_id,customer_id,spend_30d,savings_rate,missed_emi,hospital_spend,unique_payees,salary_amount,velocity,entertainment_spend,expected_segment,expected_stress_flag,segment_reason
+segment-case-001,segment-customer-001,12000,0.1,0,0,4,18000,2,500,FIRST_JOB,False,canonical first_job behavior
+segment-case-002,segment-customer-002,45000,0.18,0,7000,8,65000,5,900,MARRIAGE,False,canonical marriage behavior
+segment-case-003,segment-customer-003,30000,0.05,0,24000,5,30000,3,700,MEDICAL,False,canonical medical behavior
+segment-case-004,segment-customer-004,42000,-0.3,1,0,12,28000,5,900,STRESS,True,canonical stress behavior
+segment-case-005,segment-customer-005,18000,0.32,0,0,4,28000,2,400,SAVER,False,canonical saver behavior
+segment-case-006,segment-customer-006,60000,0.08,0,0,30,60000,20,1800,HIGH_VELOCITY,False,canonical high_velocity behavior
+segment-case-007,segment-customer-007,24000,0.02,0,0,7,24000,5,600,BASELINE,False,canonical baseline behavior
+segment-boundary-zero,segment-customer-008,0,0,0,0,0,0,0,0,BASELINE,False,all-zero cold start
+segment-conflicting-stress,segment-customer-009,1000,0.5,1,0,1,10000,1,0,STRESS,True,missed EMI takes precedence
