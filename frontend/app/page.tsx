@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
-import { AlertCircle, ArrowUpRight, Bell, CheckCircle2, ChevronRight, CircleHelp, Clock3, IndianRupee, LayoutDashboard, MessageCircle, ShieldCheck, TrendingUp, WalletCards, X, Zap } from "lucide-react";
+import { AlertCircle, ArrowUpRight, Bell, CheckCircle2, ChevronRight, CircleHelp, Clock3, IndianRupee, LayoutDashboard, MessageCircle, ShieldCheck, TrendingUp, X, Zap } from "lucide-react";
 import { api } from "../lib/api";
 
 type Dashboard = {
@@ -157,9 +157,9 @@ function Alerts({ data }: { data: Dashboard }) {
   );
 }
 
-function RailAlerts({ data, onSelect }: { data: Dashboard; onSelect: (view: string) => void }) {
+function RailAlerts({ data }: { data: Dashboard }) {
   return <section className="rail-section">
-    <div className="rail-heading"><span><AlertCircle size={15} /> Security alerts</span><button onClick={() => onSelect('Alerts')}>View all</button></div>
+    <div className="rail-heading"><span><AlertCircle size={15} /> Security alerts</span></div>
     {data.alerts.length ? data.alerts.slice(0, 3).map(alert => <div className="rail-alert" key={alert.id}>
       <span className={`rail-alert-icon ${alert.type === 'fraud' ? 'danger' : 'notice'}`}><AlertCircle size={15} /></span>
       <div><strong>{alert.type === 'fraud' ? 'Payment protection' : 'Cash-flow support'}</strong><p>{alert.message_en}</p></div>
@@ -167,14 +167,14 @@ function RailAlerts({ data, onSelect }: { data: Dashboard; onSelect: (view: stri
   </section>;
 }
 
-function RailOffers({ data, onSelect }: { data: Dashboard; onSelect: (view: string) => void }) {
+function RailOffers({ data }: { data: Dashboard }) {
   return <section className="rail-section">
-    <div className="rail-heading"><span><TrendingUp size={15} /> For you</span><button onClick={() => onSelect('Offers')}>See all</button></div>
-    {data.offers.length ? data.offers.slice(0, 3).map(offer => <button className="rail-offer" key={offer.id} onClick={() => onSelect('Offers')}>
+    <div className="rail-heading"><span><TrendingUp size={15} /> Recommendations</span></div>
+    {data.offers.length ? data.offers.slice(0, 3).map(offer => <div className="rail-offer" key={offer.id}>
       <span className="offer-mark"><IndianRupee size={15} /></span>
       <span><strong>{offer.product_code.replace('_', ' ')}</strong><small>{offer.blocked_by_ethics ? 'Paused by safety rules' : offer.reason}</small></span>
       <ChevronRight size={15} />
-    </button>) : <div className="rail-empty"><Clock3 size={17} /><span>Recommendations will appear as your account evolves.</span></div>}
+    </div>) : <div className="rail-empty"><Clock3 size={17} /><span>Recommendations will appear as your account evolves.</span></div>}
   </section>;
 }
 
@@ -348,7 +348,7 @@ function App() {
   const dashboard = data;
   if (dashboard.user.kyc_status !== 'verified') return <Kyc onComplete={load} />;
 
-  const nav = [{ label: 'Overview', icon: LayoutDashboard }, { label: 'Offers', icon: WalletCards }, { label: 'Alerts', icon: Bell }, { label: 'Conversation', icon: MessageCircle }, { label: 'Explain', icon: CircleHelp }, { label: 'Simulator', icon: Zap }];
+  const nav = [{ label: 'Overview', icon: LayoutDashboard }, { label: 'Conversation', icon: MessageCircle }, { label: 'Explain', icon: CircleHelp }, { label: 'Simulator', icon: Zap }];
 
   const ask = async (message: string) => {
     setChat(message);
@@ -393,8 +393,8 @@ function App() {
 
           <aside className="right-rail">
             <div className="rail-account"><div className="rail-account-top"><span>ACCOUNT HEALTH</span><span className="health-dot" /></div><strong>{dashboard.stress_flag ? 'Support mode' : 'Looking good'}</strong><p>{dashboard.stress_flag ? 'We are keeping credit decisions paused while we protect your cash flow.' : 'Your spending and saving rhythm is currently stable.'}</p><div className="health-bar"><span style={{ width: dashboard.stress_flag ? '48%' : '78%' }} /></div></div>
-            <RailAlerts data={dashboard} onSelect={setView} />
-            <RailOffers data={dashboard} onSelect={setView} />
+            <RailAlerts data={dashboard} />
+            <RailOffers data={dashboard} />
           </aside>
         </div>
       </div>
