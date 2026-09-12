@@ -11,13 +11,13 @@ if (-not (Test-Path $python)) {
 Start-Process powershell.exe -ArgumentList @(
     "-NoExit",
     "-Command",
-    "Set-Location '$backend'; & '$python' -m uvicorn app.main:app --host 127.0.0.1 --port 8000"
+    "Set-Location -LiteralPath `"$backend`"; & `"$python`" -m uvicorn app.main:app --host 127.0.0.1 --port 8000"
 )
 
 Start-Process powershell.exe -ArgumentList @(
     "-NoExit",
     "-Command",
-    "Set-Location '$frontend'; npm run start:local"
+    "Set-Location -LiteralPath `"$frontend`"; npm run start:local"
 )
 
 Write-Host "Backend:  http://localhost:8000"
