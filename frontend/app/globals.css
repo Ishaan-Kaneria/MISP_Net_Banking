@@ -1,0 +1,18 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { --ink: #182a3a; --muted: #6b7d87; --paper: #f7f8f4; --teal: #087f78; --gold: #d39d43; --line: #dfe6e1; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'DM Sans', sans-serif; }
+button, input { font: inherit; }
+.display { font-family: 'Playfair Display', serif; }
+.app-grid { background: radial-gradient(circle at 92% 0%, #e4f0e9 0, transparent 29rem), var(--paper); min-height: 100vh; }
+.shell { max-width: 1180px; margin: 0 auto; padding: 28px 22px 110px; }
+.card { background: rgba(255,255,255,.82); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 35px rgba(24,42,58,.05); }
+.nav-link { color: var(--muted); font-size: 14px; text-decoration: none; }
+.nav-link:hover { color: var(--teal); }
+.pill { border-radius: 999px; padding: 6px 10px; font-size: 12px; font-weight: 700; }
+.fade-up { animation: rise .55s ease both; }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }

@@ -1,0 +1,106 @@
+from datetime import datetime, timedelta, timezone
+from decimal import Decimal
+from zoneinfo import ZoneInfo
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from .models import Account, Alert, AuditLog, Recommendation, Transaction, User, UserFeature, UserScore
+from .rules import fraud_hard_rules, haversine_km, offer_rules
+
+CATEGORIES = {
+    "salary": "SALARY", "hospital": "HOSPITAL", "apollo": "HOSPITAL", "grocery": "UPI_GROCERY",
+    "zepto": "UPI_GROCERY", "fuel": "FUEL", "school": "EDUCATION", "emi": "EMI",
+    "netflix": "ENTERTAINMENT", "transfer": "TRANSFER",
+}
+
+
+def comparable_time(value):
+    if value is not None and value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value
+
+
+def classify(payee: str, mcc: str | None) -> str:
+    value = payee.lower()
+    for keyword, category in CATEGORIES.items():
+        if keyword in value:
+            return category
+    if mcc == "7995":
+        return "WATCHLIST"
+    return "UNKNOWN"
+
+
+def run_pipeline(db: Session, user_id: str, payload) -> tuple[Transaction, list[str]]:
+    now = payload.ts or datetime.now(timezone.utc)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+    now = now.astimezone(timezone.utc)
+    local_time = now.astimezone(ZoneInfo("Asia/Kolkata"))
+    category = classify(payload.payee, payload.mcc)
+    user = db.get(User, user_id)
+    history = list(db.scalars(select(Transaction).where(Transaction.user_id == user_id).order_by(Transaction.ts.desc()).limit(100)))
+    previous = history[0] if history else None
+    km = haversine_km(previous.lat, previous.lng, payload.lat, payload.lng) if previous else 0
+    recent_debits = [t for t in history if t.direction == "debit" and comparable_time(t.ts) >= now - timedelta(minutes=2)]
+    same_device = bool(user and user.device_id and payload.device_id == user.device_id)
+    is_night = local_time.hour >= 22 or local_time.hour < 5
+    hard_reasons = fraud_hard_rules(amount=float(payload.amount), km_from_last=km, same_device=same_device,
+                                    txns_last_2m=len(recent_debits) + (1 if payload.direction == "debit" else 0), category=category, is_night=is_night)
+    anomaly_score = min(0.98, 0.12 + (float(payload.amount) / 100000) + (0.2 if is_night else 0) + (0.2 if not same_device else 0))
+    fraud_score = round(max(anomaly_score, 0.86 if hard_reasons else 0), 3)
+    status = "blocked" if hard_reasons or fraud_score >= 0.82 else "posted"
+    transaction = Transaction(user_id=user_id, amount=payload.amount, direction=payload.direction,
+                              payee=payload.payee, mcc=payload.mcc, lat=payload.lat, lng=payload.lng,
+                              device_id=payload.device_id, ts=now, category=category, status=status, fraud_score=fraud_score)
+    db.add(transaction)
+    db.flush()
+    if status == "posted":
+        account = db.scalar(select(Account).where(Account.user_id == user_id))
+        if account:
+            account.balance += payload.amount if payload.direction == "credit" else -payload.amount
+    all_transactions = history + [transaction]
+    cutoff = now - timedelta(days=30)
+    recent = [t for t in all_transactions if comparable_time(t.ts) >= cutoff and t.status == "posted"]
+    debits = sum(float(t.amount) for t in recent if t.direction == "debit")
+    credits = sum(float(t.amount) for t in recent if t.direction == "credit")
+    spend_7d = sum(float(t.amount) for t in recent if t.direction == "debit" and comparable_time(t.ts) >= now - timedelta(days=7))
+    feature = db.get(UserFeature, user_id) or UserFeature(user_id=user_id)
+    feature.spend_7d, feature.spend_30d = Decimal(str(spend_7d)), Decimal(str(debits))
+    feature.savings_rate = round((credits - debits) / max(credits, 1), 3)
+    feature.salary_amt = Decimal(str(max([float(t.amount) for t in recent if t.category == "SALARY"] or [0])))
+    feature.emi_count = sum(t.category == "EMI" for t in recent)
+    feature.night_txn_ratio = sum((t.ts.hour >= 22 or t.ts.hour < 5) for t in recent) / max(len(recent), 1)
+    feature.unique_payees_7d = len({t.payee for t in recent if comparable_time(t.ts) >= now - timedelta(days=7)})
+    feature.missed_emi_30d = 1 if any("missed" in (t.payee or "").lower() for t in recent) else 0
+    db.add(feature)
+    if feature.missed_emi_30d or feature.savings_rate < -0.15:
+        segment = "STRESS"
+    elif category == "HOSPITAL":
+        segment = "MEDICAL"
+    elif category == "SALARY" and not history:
+        segment = "FIRST_JOB"
+    elif feature.savings_rate > 0.2:
+        segment = "SAVER"
+    else:
+        segment = "BASELINE"
+    stress = segment == "STRESS" or feature.missed_emi_30d > 0
+    score = db.get(UserScore, user_id) or UserScore(user_id=user_id)
+    score.fraud_score, score.segment, score.life_stage, score.stress_flag = fraud_score, segment, segment, stress
+    db.add(score)
+    recommendations = offer_rules(category, segment, stress, float(payload.amount), debits)
+    for code, reason, blocked in recommendations:
+        db.add(Recommendation(user_id=user_id, product_code=code, reason=reason, blocked_by_ethics=blocked))
+    alert_ids = []
+    if status == "blocked":
+        alert = Alert(user_id=user_id, type="fraud", message_hi="यह भुगतान सुरक्षा कारणों से रोक दिया गया है।", message_en="This payment was blocked for your protection.")
+        db.add(alert)
+        db.flush()
+        alert_ids.append(alert.id)
+    if stress:
+        alert = Alert(user_id=user_id, type="stress", message_hi="आपकी नकदी सुरक्षित रखना हमारी प्राथमिकता है।", message_en="Your cash flow comes first. Grace support is available.")
+        db.add(alert)
+    db.add(AuditLog(user_id=user_id, action="txn_score", features={"km_from_last": km, "is_night": is_night, "fraud_score": fraud_score}, reasons=hard_reasons))
+    db.commit()
+    db.refresh(transaction)
+    return transaction, alert_ids
