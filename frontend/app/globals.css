@@ -109,6 +109,9 @@ button, input { font: inherit; }
 .header-icon i { position: absolute; top: 3px; right: 3px; width: 6px; height: 6px; background: #c65a5c; border: 1px solid white; border-radius: 50%; }
 .header-divider { width: 1px; height: 23px; background: #e0e6e8; }
 .language-display { padding: 0; border: 0; background: transparent; color: #687d89; font-size: 11px; cursor: pointer; }
+.language-switcher { display: flex; gap: 2px; padding: 2px; border: 1px solid #dfe6e9; border-radius: 5px; background: #f5f7f8; }
+.language-switcher button { padding: 4px 6px; border: 0; border-radius: 3px; background: transparent; color: #687d89; font-size: 10px; font-weight: 700; cursor: pointer; }
+.language-switcher button.selected { color: white; background: var(--teal); }
 .content-inner { max-width: 840px; padding: 42px 34px 80px; margin: 0 auto; }
 .portal-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; }
 .account-summary { display: grid; grid-template-columns: 1.3fr .7fr auto; align-items: center; gap: 22px; margin-top: 30px; padding: 23px 25px; color: white; background: #163d56; border-radius: 7px; box-shadow: 0 8px 18px rgba(18,45,66,.14); }
@@ -126,5 +129,14 @@ button, input { font: inherit; }
 .bank-rail { padding: 42px 22px 60px 0; background: #f5f7f8; }
 .bank-rail .rail-section, .bank-rail .rail-account { box-shadow: 0 2px 8px rgba(26,48,62,.035); }
 .bank-rail .rail-section { margin-top: 14px; }
+.activity-rail { padding-bottom: 10px; }
+.activity-row { display: flex; align-items: center; gap: 8px; padding: 9px 0; border-top: 1px solid #edf1ef; }
+.activity-icon { display: grid; flex: 0 0 auto; place-items: center; width: 23px; height: 23px; color: var(--teal); background: #e8f3ef; border-radius: 5px; font-size: 14px; font-weight: 700; }
+.activity-icon.blocked { color: var(--danger); background: #f9eaea; }
+.activity-name { flex: 1; min-width: 0; }
+.activity-name strong, .activity-name small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.activity-name strong { color: var(--navy); font-size: 10px; }
+.activity-name small { margin-top: 2px; color: var(--muted); font-size: 9px; }
+.activity-amount { color: var(--navy); font-size: 10px; white-space: nowrap; }
 @media (max-width: 1080px) { .bank-portal { grid-template-columns: 204px minmax(0, 1fr); } .bank-rail { grid-column: 2; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; padding: 0 34px 50px; } .bank-rail .rail-section, .bank-rail .rail-account { margin-top: 0; } .bank-rail .rail-account { grid-column: 1 / -1; } }
-@media (max-width: 720px) { .bank-portal { display: block; } .bank-sidebar { min-height: auto; padding: 13px 16px; } .sidebar-brand { padding: 0; } .profile-mini, .side-label, .side-security, .side-signout { display: none; } .side-nav { flex-direction: row; gap: 4px; margin-top: 13px; overflow-x: auto; } .side-nav button { flex: 0 0 auto; width: auto; padding: 8px 10px; font-size: 11px; } .side-nav button.active { box-shadow: inset 0 -2px 0 #69c6b5; } .bank-header { min-height: 58px; padding: 0 18px; } .header-context, .header-divider, .secure-label { display: none; } .mobile-brand { display: inline; color: var(--navy); font-size: 13px; font-weight: 700; letter-spacing: .08em; } .content-inner { padding: 30px 18px 40px; } .portal-heading { align-items: flex-start; flex-direction: column; } .date-stamp { display: none; } .account-summary { grid-template-columns: 1fr; gap: 16px; padding: 20px; } .summary-account { padding: 13px 0 0; border-top: 1px solid rgba(255,255,255,.2); border-left: 0; } .summary-action button { width: 100%; justify-content: center; } .summary-metrics { grid-template-columns: 1fr; } .bank-rail { display: flex; flex-direction: column; padding: 0 18px 40px; } }
+@media (max-width: 720px) { .bank-portal { display: block; } .bank-sidebar { min-height: auto; padding: 13px 16px; } .sidebar-brand { padding: 0; } .profile-mini, .side-label, .side-security, .side-signout { display: none; } .side-nav { flex-direction: row; gap: 4px; margin-top: 13px; overflow-x: auto; } .side-nav button { flex: 0 0 auto; width: auto; padding: 8px 10px; font-size: 11px; } .side-nav button.active { box-shadow: inset 0 -2px 0 #69c6b5; } .bank-header { min-height: 58px; padding: 0 18px; } .header-context, .header-divider, .secure-label { display: none; } .mobile-brand { display: inline; color: var(--navy); font-size: 13px; font-weight: 700; letter-spacing: .08em; } .content-inner { padding: 30px 18px 40px; } .portal-heading { align-items: flex-start; flex-direction: column; } .date-stamp { display: none; } .account-summary { grid-template-columns: 1fr; gap: 16px; padding: 20px; } .summary-account { padding: 13px 0 0; border-top: 1px solid rgba(255,255,255,.2); border-left: 0; } .summary-action button { width: 100%; justify-content: center; } .summary-metrics { grid-template-columns: 1fr; } .bank-rail { display: flex; flex-direction: column; padding: 0 18px 40px; } .language-switcher button { padding: 3px 5px; } }
