@@ -139,7 +139,10 @@ def run_pipeline(db: Session, user_id: str, payload, *, force_post: bool = False
     score = db.get(UserScore, user_id) or UserScore(user_id=user_id)
     score.fraud_score, score.segment, score.life_stage, score.stress_flag = fraud_score, segment, segment, stress
     db.add(score)
-    recommendations = offer_rules(category, segment, stress, float(payload.amount), debits)
+    recommendations = offer_rules(category, segment, stress, float(payload.amount), debits,
+                                  savings_rate=feature.savings_rate, salary_amt=float(feature.salary_amt),
+                                  emi_count=feature.emi_count, night_txn_ratio=feature.night_txn_ratio,
+                                  unique_payees_7d=feature.unique_payees_7d)
     existing_offers = {item.product_code: item for item in db.scalars(select(Recommendation).where(Recommendation.user_id == user_id))}
     for code, reason, blocked in recommendations:
         current = existing_offers.get(code)

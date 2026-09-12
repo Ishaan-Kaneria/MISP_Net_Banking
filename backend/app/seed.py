@@ -14,11 +14,58 @@ PERSONAS = [
 ]
 
 
-def _seed_default_history(db, user: User) -> None:
-    for index in range(40):
-        category = "SALARY" if index % 10 == 0 else ("EMI" if index % 9 == 0 else "UPI_GROCERY")
-        amount = 28000 if category == "SALARY" else (6200 if category == "EMI" else 350 + index * 12)
-        db.add(Transaction(user_id=user.id, amount=amount, direction="credit" if category == "SALARY" else "debit", payee=category.title(), category=category, device_id=user.device_id, ts=datetime.now(timezone.utc) - timedelta(days=index), status="posted", fraud_score=0.04))
+def _seed_saver_history(db, user: User) -> None:
+    """Ramesh Shah — a genuine saver story: steady salary with spend kept
+    well below it. This satisfies predict_segment()'s own deterministic
+    `savings_rate > 0.2 and spend_30d < 0.8 * salary` rule directly, the same
+    way pipeline.missed_emi() lets the STRESS persona re-derive its segment
+    from real transactions rather than a hardcoded row the next live
+    transaction would silently overwrite.
+    """
+    now = datetime.now(timezone.utc)
+    for days_ago in (150, 120, 90, 60, 30, 2):
+        db.add(Transaction(user_id=user.id, amount=32000, direction="credit", payee="Salary", category="SALARY", device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.03))
+    for days_ago in (145, 105, 65, 25):
+        db.add(Transaction(user_id=user.id, amount=4000, direction="debit", payee="Emi", category="EMI", device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.03))
+    for days_ago in range(0, 28, 4):
+        db.add(Transaction(user_id=user.id, amount=600 + days_ago * 5, direction="debit", payee="Zepto", category="UPI_GROCERY", device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.03))
+    db.add(Transaction(user_id=user.id, amount=499, direction="debit", payee="Netflix", category="ENTERTAINMENT", device_id=user.device_id, ts=now - timedelta(days=10), status="posted", fraud_score=0.03))
+
+
+def _seed_medical_history(db, user: User) -> None:
+    """Meena Iyer — genuine, recent hospital spend so predict_segment()'s own
+    deterministic `hospital_spend > 10000` rule classifies her as MEDICAL,
+    instead of relying on the probabilistic segmentation model.
+    """
+    now = datetime.now(timezone.utc)
+    for days_ago in (150, 120, 90, 60, 30, 2):
+        db.add(Transaction(user_id=user.id, amount=24000, direction="credit", payee="Salary", category="SALARY", device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.03))
+    for days_ago in (150, 105, 60, 30):
+        db.add(Transaction(user_id=user.id, amount=5500, direction="debit", payee="Emi", category="EMI", device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.03))
+    for days_ago, amount in ((20, 6800), (12, 5400), (5, 4200)):
+        db.add(Transaction(user_id=user.id, amount=amount, direction="debit", payee="Apollo Hospital", category="HOSPITAL", device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.03))
+    for days_ago in range(0, 28, 5):
+        db.add(Transaction(user_id=user.id, amount=450 + days_ago * 8, direction="debit", payee="Zepto", category="UPI_GROCERY", device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.03))
+
+
+def _seed_first_job_history(db, user: User) -> None:
+    """Priya Verma — a genuine first-job story: one recent first salary, no
+    EMI history yet, and only a couple of distinct payees. There's no
+    deterministic predict_segment() override for FIRST_JOB, so — unlike
+    SAVER/MEDICAL above — this is still a best-effort classification by the
+    segmentation model, same as before this rework. What changes is that her
+    history is now a coherent, on-story signal (low unique_payees, spend
+    close to her whole salary from one-off setup costs, exactly the shape
+    the model was trained to recognise as FIRST_JOB) instead of being
+    byte-for-byte the same generic salary/EMI/grocery loop every other
+    persona shared, which had nothing to do with any of their segments.
+    """
+    now = datetime.now(timezone.utc)
+    db.add(Transaction(user_id=user.id, amount=15000, direction="credit", payee="Salary", category="SALARY", device_id=user.device_id, ts=now - timedelta(days=14), status="posted", fraud_score=0.03))
+    db.add(Transaction(user_id=user.id, amount=10500, direction="debit", payee="Laptop", device_id=user.device_id, ts=now - timedelta(days=11), status="posted", fraud_score=0.03))
+    for days_ago, amount in ((9, 650), (6, 420), (3, 900)):
+        db.add(Transaction(user_id=user.id, amount=amount, direction="debit", payee="Zepto", category="UPI_GROCERY", device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.03))
+    db.add(Transaction(user_id=user.id, amount=199, direction="debit", payee="Netflix", category="ENTERTAINMENT", device_id=user.device_id, ts=now - timedelta(days=7), status="posted", fraud_score=0.03))
 
 
 def _seed_stress_history(db, user: User) -> None:
@@ -40,6 +87,24 @@ def _seed_stress_history(db, user: User) -> None:
         db.add(Transaction(user_id=user.id, amount=900 + days_ago * 15, direction="debit", payee="Upi_grocery", category="UPI_GROCERY", device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.04))
 
 
+# Per-segment history builders and a matching initial UserFeature snapshot
+# (shown on the dashboard until the persona's first live transaction
+# recomputes it for real) — replaces one generic 40-row loop every non-STRESS
+# persona used to share regardless of their intended segment.
+HISTORY_BUILDERS = {
+    "SAVER": _seed_saver_history,
+    "FIRST_JOB": _seed_first_job_history,
+    "STRESS": _seed_stress_history,
+    "MEDICAL": _seed_medical_history,
+}
+INITIAL_FEATURES = {
+    "SAVER": {"spend_7d": 1200, "spend_30d": 9100, "savings_rate": 0.86, "salary_amt": 32000, "emi_count": 1, "missed_emi_30d": 0},
+    "FIRST_JOB": {"spend_7d": 1750, "spend_30d": 12669, "savings_rate": 0.16, "salary_amt": 15000, "emi_count": 0, "missed_emi_30d": 0},
+    "STRESS": {"spend_7d": 6100, "spend_30d": 18500, "savings_rate": -0.3, "salary_amt": 13500, "emi_count": 1, "missed_emi_30d": 1},
+    "MEDICAL": {"spend_7d": 5300, "spend_30d": 25200, "savings_rate": 0.475, "salary_amt": 24000, "emi_count": 1, "missed_emi_30d": 0},
+}
+
+
 def seed() -> None:
     Base.metadata.create_all(engine)
     with SessionLocal() as db:
@@ -51,11 +116,8 @@ def seed() -> None:
             db.add(user)
             db.flush()
             db.add(Account(user_id=user.id, balance=balance))
-            if segment == "STRESS":
-                _seed_stress_history(db, user)
-            else:
-                _seed_default_history(db, user)
-            db.add(UserFeature(user_id=user.id, spend_7d=5000, spend_30d=24000, savings_rate=0.32 if segment == "SAVER" else (-0.3 if segment == "STRESS" else 0.1), salary_amt=28000, emi_count=4, missed_emi_30d=1 if segment == "STRESS" else 0))
+            HISTORY_BUILDERS[segment](db, user)
+            db.add(UserFeature(user_id=user.id, **INITIAL_FEATURES[segment]))
             db.add(UserScore(user_id=user.id, segment=segment, life_stage=segment, stress_flag=segment == "STRESS"))
         db.commit()
 

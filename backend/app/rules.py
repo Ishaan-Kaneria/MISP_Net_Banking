@@ -38,16 +38,45 @@ def fraud_hard_rules(*, amount: float, km_from_last: float, same_device: bool, t
     return reasons
 
 
-def offer_rules(category: str, segment: str, stress_flag: bool, amount: float, spend_30d: float) -> list[tuple[str, str, bool]]:
+def offer_rules(category: str, segment: str, stress_flag: bool, amount: float, spend_30d: float, *,
+               savings_rate: float = 0.0, salary_amt: float = 0.0, emi_count: int = 0,
+               night_txn_ratio: float = 0.0, unique_payees_7d: int = 0) -> list[tuple[str, str, bool]]:
+    """Recommendations driven by both the transaction that just posted
+    (category, amount) and the user's broader behavior (segment plus the
+    30-day features pipeline.run_pipeline() already computes for every
+    transaction). The extra keyword features are optional so any existing
+    caller passing only the original five positional arguments keeps working
+    unchanged; pipeline.py is the only real caller and passes all of them.
+
+    Credit-shaped offers (STARTER_CREDIT, PERSONAL_LOAN, WEDDING_EMI_PLAN)
+    stay ethics-gated behind stress_flag like the original rules; the newer
+    non-credit nudges (insights, security, savings products) are never
+    blocked by it — there's no cash-flow risk in suggesting a savings
+    product or a security setting to someone under financial stress.
+    """
     offers: list[tuple[str, str, bool]] = []
     if category == "SALARY":
         offers.append(("SIP", "A steady salary can become a simple monthly SIP.", False))
-    if category == "HOSPITAL":
+    if category == "HOSPITAL" or segment == "MEDICAL":
         offers.append(("MICRO_INSURANCE", "A small health cover can soften future medical shocks.", False))
     if spend_30d and amount >= spend_30d * 0.4:
         offers.append(("EMI_CONVERT", "Convert a large recent expense into manageable payments.", stress_flag))
     if segment == "FIRST_JOB":
         offers.append(("STARTER_CREDIT", "A small starter limit is available after your first salary.", stress_flag))
+    if segment == "SAVER" and savings_rate > 0.25:
+        offers.append(("RECURRING_DEPOSIT", "Your savings rate is strong — a recurring deposit can grow it further without touching your main balance.", False))
+    if segment == "MARRIAGE":
+        offers.append(("WEDDING_EMI_PLAN", "A big milestone expense is easier to plan for as a fixed monthly EMI than one large payment.", stress_flag))
+    if segment == "HIGH_VELOCITY":
+        offers.append(("SPEND_INSIGHTS", "Frequent small payments are easier to track with real-time spend alerts.", False))
+    if emi_count > 0 and segment != "STRESS":
+        offers.append(("EMI_PROTECT", "Optional cover that keeps your EMIs paid if your income is ever interrupted.", False))
+    if unique_payees_7d >= 8:
+        offers.append(("AUTOPAY_BUNDLE", "Group your regular payees into one autopay bundle to save time each month.", False))
+    if night_txn_ratio > 0.3:
+        offers.append(("NIGHT_SECURITY_LOCK", "Add an extra device and location lock for your frequent late-night transactions.", False))
+    if segment == "BASELINE" and 0.05 < savings_rate <= 0.25 and salary_amt:
+        offers.append(("EMERGENCY_FUND", "Compare your savings rate with your spend to set an emergency-fund target that fits your cash flow.", False))
     if stress_flag or segment == "STRESS":
         offers.append(("GRACE_PERIOD", "Take a 15-day grace period while we protect your cash flow.", False))
         offers.append(("PERSONAL_LOAN", "Credit is paused while your financial stress is high.", True))
