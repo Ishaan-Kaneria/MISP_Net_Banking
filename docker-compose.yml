@@ -21,6 +21,8 @@ services:
       DATABASE_URL: postgresql+psycopg://arthai:arthai@db:5432/arthai
       JWT_SECRET: change-me-in-production
       CORS_ORIGINS: http://localhost:3000
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-gemini-3.6-flash}
     ports:
       - "8000:8000"
     depends_on:

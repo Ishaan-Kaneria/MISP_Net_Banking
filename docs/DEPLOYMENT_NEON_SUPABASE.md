@@ -168,7 +168,7 @@ Optional backend variables:
 
 ```env
 GEMINI_API_KEY=
-LLM_MODEL=gemini-2.5-flash
+LLM_MODEL=gemini-3.6-flash
 ```
 
 Generate a secret locally in PowerShell:
@@ -237,7 +237,7 @@ DATABASE_URL=postgresql+psycopg://USER:PASSWORD@HOST/DB?sslmode=require
 JWT_SECRET=YOUR_LONG_RANDOM_SECRET
 CORS_ORIGINS=https://YOUR_FRONTEND_DOMAIN
 GEMINI_API_KEY=
-LLM_MODEL=gemini-2.5-flash
+LLM_MODEL=gemini-3.6-flash
 ```
 
 Frontend environment:

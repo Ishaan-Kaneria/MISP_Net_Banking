@@ -227,7 +227,7 @@ Create `backend/.env` locally, never in chat or Git:
 
 ```env
 GEMINI_API_KEY=your-key
-LLM_MODEL=gemini-2.0-flash
+LLM_MODEL=gemini-3.6-flash
 ```
 
 The application still works with fallback chat if this key is absent.

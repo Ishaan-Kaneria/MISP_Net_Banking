@@ -62,7 +62,7 @@ Chat messages are persisted in PostgreSQL/SQLite and responses include the polic
 
 When `GEMINI_API_KEY` is set, the general chat path calls Gemini server-side with retrieved policy context. Balance and stressed-credit decisions remain handled by deterministic FastAPI tools and ethics rules before the model is reached.
 
-Chat responses include an `llm:gemini` or `llm:<fallback_reason>` trace so a deployment can distinguish a live Gemini response from the deterministic fallback. Set `GEMINI_API_KEY` and `LLM_MODEL=gemini-2.5-flash` in the backend environment to enable Gemini; never put the key in the frontend.
+Chat responses include an `llm:gemini` or `llm:<fallback_reason>` trace so a deployment can distinguish a live Gemini response from the deterministic fallback. Set `GEMINI_API_KEY` and `LLM_MODEL=gemini-3.6-flash` in the backend environment to enable Gemini; never put the key in the frontend. When using Docker Compose, export these variables in the shell or add them to the repository-root `.env` file; the backend `.env` file is only loaded for local backend runs.
 
 ## Product boundaries
 
