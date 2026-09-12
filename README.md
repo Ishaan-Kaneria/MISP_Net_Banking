@@ -65,3 +65,14 @@ When `GEMINI_API_KEY` is set, the general chat path calls Gemini server-side wit
 ## Product boundaries
 
 Identity, UPI, DigiLocker, WhatsApp, and customer funds are mocked. No Aadhaar bytes or real payment credentials are accepted. Fraud and ethics decisions happen server-side; the chat assistant cannot bypass them.
+
+## Decision models
+
+The fraud and customer-segmentation decision layer is documented in [backend/ML_MODEL_README.md](backend/ML_MODEL_README.md). It covers the decision-time feature contract, hard-rule precedence, synthetic training, evaluation, audit logging, and retraining commands.
+
+To retrain the saved artifacts:
+
+```powershell
+cd backend
+.\.venv\Scripts\python.exe scripts\train_models.py
+```

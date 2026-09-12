@@ -19,7 +19,11 @@
         "is_night": 0,
         "km_from_last": 10,
         "same_device": 1,
-        "velocity_2m": 0
+        "velocity_2m": 0,
+        "amount_vs_typical": 1.0,
+        "balance_ratio": 0.05,
+        "is_new_payee": 0,
+        "payee_frequency_30d": 4
       }
     },
     {
@@ -41,7 +45,11 @@
         "is_night": 0,
         "km_from_last": 250,
         "same_device": 1,
-        "velocity_2m": 0
+        "velocity_2m": 0,
+        "amount_vs_typical": 12.500833333333333,
+        "balance_ratio": 0.30002,
+        "is_new_payee": 0,
+        "payee_frequency_30d": 0
       }
     },
     {
@@ -63,7 +71,11 @@
         "is_night": 0,
         "km_from_last": 300,
         "same_device": 1,
-        "velocity_2m": 0
+        "velocity_2m": 0,
+        "amount_vs_typical": 12.5,
+        "balance_ratio": 0.3,
+        "is_new_payee": 0,
+        "payee_frequency_30d": 0
       }
     },
     {
@@ -87,7 +99,11 @@
         "is_night": 0,
         "km_from_last": 251,
         "same_device": 1,
-        "velocity_2m": 0
+        "velocity_2m": 0,
+        "amount_vs_typical": 12.500833333333333,
+        "balance_ratio": 0.30002,
+        "is_new_payee": 0,
+        "payee_frequency_30d": 0
       }
     },
     {
@@ -109,7 +125,11 @@
         "is_night": 0,
         "km_from_last": 0,
         "same_device": 1,
-        "velocity_2m": 4
+        "velocity_2m": 4,
+        "amount_vs_typical": 0.8333333333333334,
+        "balance_ratio": 0.02,
+        "is_new_payee": 0,
+        "payee_frequency_30d": 0
       }
     },
     {
@@ -133,7 +153,11 @@
         "is_night": 0,
         "km_from_last": 0,
         "same_device": 1,
-        "velocity_2m": 5
+        "velocity_2m": 5,
+        "amount_vs_typical": 0.8333333333333334,
+        "balance_ratio": 0.02,
+        "is_new_payee": 0,
+        "payee_frequency_30d": 0
       }
     },
     {
@@ -155,7 +179,11 @@
         "is_night": 0,
         "km_from_last": 0,
         "same_device": 0,
-        "velocity_2m": 0
+        "velocity_2m": 0,
+        "amount_vs_typical": 16.666666666666668,
+        "balance_ratio": 0.4,
+        "is_new_payee": 0,
+        "payee_frequency_30d": 0
       }
     },
     {
@@ -179,7 +207,11 @@
         "is_night": 0,
         "km_from_last": 0,
         "same_device": 0,
-        "velocity_2m": 0
+        "velocity_2m": 0,
+        "amount_vs_typical": 16.6675,
+        "balance_ratio": 0.40002,
+        "is_new_payee": 1,
+        "payee_frequency_30d": 0
       }
     },
     {
@@ -203,7 +235,11 @@
         "is_night": 0,
         "km_from_last": 0,
         "same_device": 1,
-        "velocity_2m": 0
+        "velocity_2m": 0,
+        "amount_vs_typical": 0.08333333333333333,
+        "balance_ratio": 0.002,
+        "is_new_payee": 0,
+        "payee_frequency_30d": 0
       }
     },
     {
@@ -225,7 +261,11 @@
         "is_night": 1,
         "km_from_last": 0,
         "same_device": 1,
-        "velocity_2m": 0
+        "velocity_2m": 0,
+        "amount_vs_typical": 33.333333333333336,
+        "balance_ratio": 0.8,
+        "is_new_payee": 0,
+        "payee_frequency_30d": 0
       }
     },
     {
@@ -249,7 +289,11 @@
         "is_night": 1,
         "km_from_last": 0,
         "same_device": 1,
-        "velocity_2m": 0
+        "velocity_2m": 0,
+        "amount_vs_typical": 33.33416666666667,
+        "balance_ratio": 0.80002,
+        "is_new_payee": 0,
+        "payee_frequency_30d": 0
       }
     },
     {
@@ -277,7 +321,11 @@
         "is_night": 1,
         "km_from_last": 500,
         "same_device": 0,
-        "velocity_2m": 5
+        "velocity_2m": 5,
+        "amount_vs_typical": 40.0,
+        "balance_ratio": 0.96,
+        "is_new_payee": 1,
+        "payee_frequency_30d": 0
       }
     },
     {
@@ -301,7 +349,11 @@
         "is_night": 0,
         "km_from_last": 0,
         "same_device": 0,
-        "velocity_2m": 0
+        "velocity_2m": 0,
+        "amount_vs_typical": 20.833333333333332,
+        "balance_ratio": 0.5,
+        "is_new_payee": 0,
+        "payee_frequency_30d": 0
       }
     }
   ],

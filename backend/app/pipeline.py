@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from statistics import median
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
@@ -43,14 +44,23 @@ def run_pipeline(db: Session, user_id: str, payload) -> tuple[Transaction, list[
     user = db.get(User, user_id)
     history = list(db.scalars(select(Transaction).where(Transaction.user_id == user_id).order_by(Transaction.ts.desc()).limit(100)))
     previous = history[0] if history else None
+    account = db.scalar(select(Account).where(Account.user_id == user_id))
     km = haversine_km(previous.lat, previous.lng, payload.lat, payload.lng) if previous else 0
     recent_debits = [t for t in history if t.direction == "debit" and comparable_time(t.ts) >= now - timedelta(minutes=2)]
     same_device = bool(user and user.device_id and payload.device_id == user.device_id)
+    prior_debits = [float(t.amount) for t in history if t.direction == "debit" and t.status == "posted"]
+    typical_amount = median(prior_debits) if prior_debits else 1.0
+    amount_vs_typical = float(payload.amount) / max(typical_amount, 1.0)
+    balance_ratio = float(payload.amount) / max(float(account.balance) if account else 1.0, 1.0)
+    payee_frequency_30d = sum(t.payee == payload.payee and t.status == "posted" and comparable_time(t.ts) >= now - timedelta(days=30) for t in history)
+    is_new_payee = payee_frequency_30d == 0
     is_night = local_time.hour >= 22 or local_time.hour < 5
     hard_reasons = fraud_hard_rules(amount=float(payload.amount), km_from_last=km, same_device=same_device,
                                     txns_last_2m=len(recent_debits) + (1 if payload.direction == "debit" else 0), category=category, is_night=is_night)
     anomaly_score = model_fraud_score(amount=float(payload.amount), hour=local_time.hour, is_night=is_night,
-                                      km_from_last=km, same_device=same_device, velocity_2m=len(recent_debits))
+                                      km_from_last=km, same_device=same_device, velocity_2m=len(recent_debits),
+                                      amount_vs_typical=amount_vs_typical, balance_ratio=balance_ratio,
+                                      is_new_payee=is_new_payee, payee_frequency_30d=payee_frequency_30d)
     fraud_score = round(max(anomaly_score, 0.86 if hard_reasons else 0), 3)
     status = "blocked" if hard_reasons or fraud_score >= 0.82 else "posted"
     transaction = Transaction(user_id=user_id, amount=payload.amount, direction=payload.direction,
@@ -59,7 +69,6 @@ def run_pipeline(db: Session, user_id: str, payload) -> tuple[Transaction, list[
     db.add(transaction)
     db.flush()
     if status == "posted":
-        account = db.scalar(select(Account).where(Account.user_id == user_id))
         if account:
             account.balance += payload.amount if payload.direction == "credit" else -payload.amount
     all_transactions = history + [transaction]
@@ -104,7 +113,7 @@ def run_pipeline(db: Session, user_id: str, payload) -> tuple[Transaction, list[
     if stress:
         alert = Alert(user_id=user_id, type="stress", message_hi="आपकी नकदी सुरक्षित रखना हमारी प्राथमिकता है।", message_en="Your cash flow comes first. Grace support is available.")
         db.add(alert)
-    db.add(AuditLog(user_id=user_id, action="txn_score", features={"km_from_last": km, "is_night": is_night, "fraud_score": fraud_score}, reasons=hard_reasons))
+    db.add(AuditLog(user_id=user_id, action="txn_score", features={"km_from_last": km, "is_night": is_night, "fraud_score": fraud_score, "amount_vs_typical": round(amount_vs_typical, 3), "balance_ratio": round(balance_ratio, 3), "is_new_payee": is_new_payee, "payee_frequency_30d": payee_frequency_30d}, reasons=hard_reasons))
     db.commit()
     db.refresh(transaction)
     return transaction, alert_ids

@@ -22,7 +22,7 @@ SEED = 20260912
 ROOT = Path(__file__).resolve().parents[1]
 MODEL_DIR = ROOT / "app" / "ml" / "models"
 REPORT_DIR = ROOT / "data" / "synthetic" / "reports"
-FRAUD_FEATURES = ("amount", "log_amount", "hour", "is_night", "km_from_last", "same_device", "velocity_2m")
+FRAUD_FEATURES = ("amount", "log_amount", "hour", "is_night", "km_from_last", "same_device", "velocity_2m", "amount_vs_typical", "balance_ratio", "is_new_payee", "payee_frequency_30d")
 SEGMENT_FEATURES = ("spend_30d", "savings_rate", "missed_emi", "hospital_spend", "unique_payees", "salary_amount", "velocity", "entertainment_spend")
 
 
@@ -37,6 +37,9 @@ def fraud_frame(size: int = 24000) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     velocity = rng.poisson(0.3, size)
     watchlist = rng.binomial(1, 0.008, size)
     new_payee = rng.binomial(1, 0.08, size)
+    amount_vs_typical = rng.lognormal(0, 0.45, size).clip(0.2, 18)
+    balance_ratio = rng.beta(1.5, 8, size).clip(0.001, 1.5)
+    payee_frequency = rng.poisson(5, size)
     distance[::113] = 400
     amount[::113] = 22000
     velocity[::127] = 5
@@ -46,16 +49,21 @@ def fraud_frame(size: int = 24000) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     hour[::149] = 23
     is_night[::149] = 1
     amount[::149] = 50000
+    amount_vs_typical[::163] = 7
+    balance_ratio[::163] = 0.7
+    new_payee[::163] = 1
+    payee_frequency[::163] = 0
     fraud = (
         ((distance > 250) & (amount > 15000))
         | (velocity >= 5)
         | ((same_device == 0) & (amount > 20000))
         | (watchlist == 1)
         | ((is_night == 1) & (amount > 40000))
+        | ((amount_vs_typical > 4) & (balance_ratio > 0.5) & (new_payee == 1))
     )
     borderline = (rng.random(size) < 0.012) & ~fraud
     fraud = fraud | borderline
-    features = np.column_stack((amount, np.log1p(amount), hour, is_night, distance, same_device, velocity)).astype(float)
+    features = np.column_stack((amount, np.log1p(amount), hour, is_night, distance, same_device, velocity, amount_vs_typical, balance_ratio, new_payee, payee_frequency)).astype(float)
     order = np.argsort(dates)
     return features[order], fraud.astype(int)[order], dates[order]
 
@@ -120,7 +128,7 @@ def train() -> dict:
     }
     joblib.dump(fraud_model, MODEL_DIR / "fraud_classifier.joblib")
     joblib.dump(isolation, MODEL_DIR / "iforest.joblib")
-    save_json("fraud_feature_schema.json", {"features": list(FRAUD_FEATURES), "model": "RandomForestClassifier", "version": "synthetic-20260912"})
+    save_json("fraud_feature_schema.json", {"features": list(FRAUD_FEATURES), "model": "RandomForestClassifier", "version": "synthetic-20260912-context-v2"})
     save_json("fraud_thresholds.json", {"decision_threshold": threshold, "hard_rule_threshold": 0.82})
 
     segment_x, segment_y, customer_ids = segment_frame()

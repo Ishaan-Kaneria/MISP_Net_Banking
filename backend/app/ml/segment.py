@@ -46,14 +46,15 @@ def predict_segment(*, spend_30d: float, savings_rate: float, missed_emi: int, h
                     unique_payees: int, salary_amount: float, velocity: int, entertainment_spend: float) -> str:
     vector = np.array([[spend_30d / 50000, savings_rate, missed_emi, hospital_spend / 20000,
                         salary_amount / 50000, entertainment_spend / 20000, velocity / 20, unique_payees / 20]], dtype=float)
-    if _MODEL is not None:
-        return SEGMENTS[int(_MODEL.predict(vector)[0])]
+    # Strong safety and behavior signals take precedence over a probabilistic class.
     if missed_emi or savings_rate < -0.15:
         return "STRESS"
     if hospital_spend > 10000:
         return "MEDICAL"
-    if savings_rate > 0.2:
-        return "SAVER"
-    if velocity > 15:
+    if velocity > 15 or unique_payees > 15:
         return "HIGH_VELOCITY"
+    if savings_rate > 0.2 and spend_30d < max(salary_amount * 0.8, 1):
+        return "SAVER"
+    if _MODEL is not None:
+        return SEGMENTS[int(_MODEL.predict(vector)[0])]
     return "BASELINE"

@@ -117,7 +117,10 @@ def fraud_cases() -> list[dict]:
             "expected_status": status, "expected_alert": bool(reasons),
             "model_features": {"amount": amount, "log_amount": math.log1p(amount), "hour": 23 if is_night else 12,
                                "is_night": int(is_night), "km_from_last": distance, "same_device": int(same_device),
-                               "velocity_2m": velocity},
+                               "velocity_2m": velocity, "amount_vs_typical": 1.0 if name == "safe" else amount / 1200,
+                               "balance_ratio": 0.05 if name == "safe" else min(amount / 50000, 1.0),
+                               "is_new_payee": int(name in ("new_device_above", "multiple_rules")),
+                               "payee_frequency_30d": 4 if name == "safe" else 0},
         })
     return cases
 

@@ -6,8 +6,12 @@
     "is_night",
     "km_from_last",
     "same_device",
-    "velocity_2m"
+    "velocity_2m",
+    "amount_vs_typical",
+    "balance_ratio",
+    "is_new_payee",
+    "payee_frequency_30d"
   ],
   "model": "RandomForestClassifier",
-  "version": "synthetic-20260912"
+  "version": "synthetic-20260912-context-v2"
 }
