@@ -86,8 +86,8 @@ def verify_kyc(payload: KycRequest, authorization: str | None = Header(default=N
 @app.post("/txn", response_model=TransactionResponse)
 def create_transaction(payload: TransactionRequest, authorization: str | None = Header(default=None), db: Session = Depends(get_db)):
     user = current_user(authorization, db)
-    transaction, alert_ids = run_pipeline(db, user.id, payload)
-    return TransactionResponse(id=transaction.id, status=transaction.status, fraud_score=transaction.fraud_score, category=transaction.category, alert_ids=alert_ids)
+    transaction, alert_ids, hard_reasons = run_pipeline(db, user.id, payload)
+    return TransactionResponse(id=transaction.id, status=transaction.status, fraud_score=transaction.fraud_score, category=transaction.category, alert_ids=alert_ids, fired_rules=hard_reasons)
 
 
 @app.post("/admin/simulate-txn", response_model=TransactionResponse)
@@ -136,11 +136,11 @@ def verify_wallet_topup(payload: WalletTopupVerifyRequest, authorization: str | 
         raise HTTPException(400, detail={"error": "Payment signature could not be verified", "code": "SIGNATURE_INVALID", "details": {}})
     topup.razorpay_payment_id = payload.razorpay_payment_id
     topup_request = TransactionRequest(amount=topup.amount, direction="credit", payee="Razorpay Top-up", device_id=user.device_id)
-    transaction, alert_ids = run_pipeline(db, user.id, topup_request, force_post=True)
+    transaction, alert_ids, hard_reasons = run_pipeline(db, user.id, topup_request, force_post=True)
     topup.status = "paid"
     topup.transaction_id = transaction.id
     db.commit()
-    return TransactionResponse(id=transaction.id, status=transaction.status, fraud_score=transaction.fraud_score, category=transaction.category, alert_ids=alert_ids)
+    return TransactionResponse(id=transaction.id, status=transaction.status, fraud_score=transaction.fraud_score, category=transaction.category, alert_ids=alert_ids, fired_rules=hard_reasons)
 
 
 @app.get("/dashboard")

@@ -19,6 +19,31 @@ recommendations at all before:
 | `segment == "BASELINE"` with modest positive savings | `EMERGENCY_FUND` | No |
 | `category == "HOSPITAL"` **or** `segment == "MEDICAL"` | `MICRO_INSURANCE` (was category-only — a MEDICAL-segment user buying groceries used to get zero medical-related offers) | No |
 
+## Second pass — more investment variety, more signals used
+
+Requested after the first pass felt thin on investment products specifically and reused
+too few of the available signals. Added 7 more product codes (12 → 19 total), all driven
+by fields `run_pipeline()` already computes but the rules hadn't touched yet
+(`category` beyond SALARY/HOSPITAL, account `balance`, `salary_amt` scale, `emi_count == 0`
+as its own signal rather than only `> 0`):
+
+| Trigger | Offer | Ethics-gated? |
+|---|---|---|
+| `category == "EDUCATION"` | `CHILD_EDUCATION_PLAN` | No |
+| `category == "FUEL"` | `FUEL_CASHBACK` | No |
+| `segment == "SAVER"` and `emi_count == 0` and `savings_rate > 0.3` | `MUTUAL_FUND_SIP` — distinct from `RECURRING_DEPOSIT`: no existing EMI to plan around is itself a signal for a slightly higher-growth product | No |
+| `balance > 60000` and `savings_rate > 0.2` | `FIXED_DEPOSIT` — the first offer keyed on the account's actual balance, not just recent flow | No |
+| `salary_amt > 40000` and not stressed | `TAX_SAVING_ELSS` | No |
+| `segment == "MARRIAGE"` | `GOLD_SAVINGS_PLAN` alongside the existing `WEDDING_EMI_PLAN` — gold is a culturally standard wedding-adjacent saving goal in this market | No |
+| `segment == "HIGH_VELOCITY"` | `CASHBACK_CARD` alongside `SPEND_INSIGHTS` — the same frequent-small-payments profile that makes insights useful also fits a rewards card | Yes (credit-shaped) |
+
+`offer_rules()` gained a `balance` keyword (pipeline.py passes the account's pre-transaction
+balance, already computed there for the insufficient-funds check) — the first signal used
+here that isn't a 30-day flow metric. A user can now match several of these on one
+transaction; that's intended personalization, not a bug — `run_pipeline()` dedupes by
+`product_code`, so a repeated offer never shows twice, but distinct qualifying offers all
+surface together.
+
 Non-credit nudges (insights, security, savings products) are never `blocked_by_ethics`
 — unlike `PERSONAL_LOAN`/`STARTER_CREDIT`/`WEDDING_EMI_PLAN`, there's no cash-flow risk in
 suggesting a savings product or a security setting to someone under financial stress, so

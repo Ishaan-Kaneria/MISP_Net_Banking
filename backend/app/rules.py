@@ -40,7 +40,7 @@ def fraud_hard_rules(*, amount: float, km_from_last: float, same_device: bool, t
 
 def offer_rules(category: str, segment: str, stress_flag: bool, amount: float, spend_30d: float, *,
                savings_rate: float = 0.0, salary_amt: float = 0.0, emi_count: int = 0,
-               night_txn_ratio: float = 0.0, unique_payees_7d: int = 0) -> list[tuple[str, str, bool]]:
+               night_txn_ratio: float = 0.0, unique_payees_7d: int = 0, balance: float = 0.0) -> list[tuple[str, str, bool]]:
     """Recommendations driven by both the transaction that just posted
     (category, amount) and the user's broader behavior (segment plus the
     30-day features pipeline.run_pipeline() already computes for every
@@ -50,25 +50,42 @@ def offer_rules(category: str, segment: str, stress_flag: bool, amount: float, s
 
     Credit-shaped offers (STARTER_CREDIT, PERSONAL_LOAN, WEDDING_EMI_PLAN)
     stay ethics-gated behind stress_flag like the original rules; the newer
-    non-credit nudges (insights, security, savings products) are never
-    blocked by it — there's no cash-flow risk in suggesting a savings
+    non-credit nudges (insights, security, savings/investment products) are
+    never blocked by it — there's no cash-flow risk in suggesting a savings
     product or a security setting to someone under financial stress.
+
+    A user can match several rules on one transaction (e.g. a SAVER who also
+    has EMIs and pays at night) — that's deliberate personalization, not a
+    bug: pipeline.py dedupes by product_code across calls, so the same offer
+    only ever appears once, but different qualifying offers all surface.
     """
     offers: list[tuple[str, str, bool]] = []
     if category == "SALARY":
         offers.append(("SIP", "A steady salary can become a simple monthly SIP.", False))
     if category == "HOSPITAL" or segment == "MEDICAL":
         offers.append(("MICRO_INSURANCE", "A small health cover can soften future medical shocks.", False))
+    if category == "EDUCATION":
+        offers.append(("CHILD_EDUCATION_PLAN", "A dedicated education savings plan smooths out school-fee spikes over the year.", False))
+    if category == "FUEL":
+        offers.append(("FUEL_CASHBACK", "A fuel-linked card gives cashback on a cost you already pay every month.", False))
     if spend_30d and amount >= spend_30d * 0.4:
         offers.append(("EMI_CONVERT", "Convert a large recent expense into manageable payments.", stress_flag))
     if segment == "FIRST_JOB":
         offers.append(("STARTER_CREDIT", "A small starter limit is available after your first salary.", stress_flag))
     if segment == "SAVER" and savings_rate > 0.25:
         offers.append(("RECURRING_DEPOSIT", "Your savings rate is strong — a recurring deposit can grow it further without touching your main balance.", False))
+    if segment == "SAVER" and emi_count == 0 and savings_rate > 0.3:
+        offers.append(("MUTUAL_FUND_SIP", "With no EMIs to plan around, a diversified mutual fund SIP can grow your surplus beyond a fixed deposit's rate.", False))
+    if balance > 60000 and savings_rate > 0.2:
+        offers.append(("FIXED_DEPOSIT", "A lump sum sitting in your balance can earn more locked into a fixed deposit for a few months.", False))
+    if salary_amt > 40000 and not stress_flag:
+        offers.append(("TAX_SAVING_ELSS", "An ELSS mutual fund can lower your taxable income while still investing for growth.", False))
     if segment == "MARRIAGE":
         offers.append(("WEDDING_EMI_PLAN", "A big milestone expense is easier to plan for as a fixed monthly EMI than one large payment.", stress_flag))
+        offers.append(("GOLD_SAVINGS_PLAN", "Save toward gold in small monthly instalments instead of one large purchase before the big day.", False))
     if segment == "HIGH_VELOCITY":
         offers.append(("SPEND_INSIGHTS", "Frequent small payments are easier to track with real-time spend alerts.", False))
+        offers.append(("CASHBACK_CARD", "A cashback card rewards the frequent small payments you're already making instead of just tracking them.", stress_flag))
     if emi_count > 0 and segment != "STRESS":
         offers.append(("EMI_PROTECT", "Optional cover that keeps your EMIs paid if your income is ever interrupted.", False))
     if unique_payees_7d >= 8:

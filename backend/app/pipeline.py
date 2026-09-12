@@ -58,7 +58,7 @@ def missed_emi(all_transactions: list[Transaction], now: datetime) -> bool:
     return days_since_last > typical_gap + 15
 
 
-def run_pipeline(db: Session, user_id: str, payload, *, force_post: bool = False) -> tuple[Transaction, list[str]]:
+def run_pipeline(db: Session, user_id: str, payload, *, force_post: bool = False) -> tuple[Transaction, list[str], list[str]]:
     """`force_post` is for money that has already been verified and captured
     by an external, already-KYC'd payment gateway (e.g. a Razorpay top-up
     whose signature we just verified) — the fraud engine still scores and
@@ -142,7 +142,7 @@ def run_pipeline(db: Session, user_id: str, payload, *, force_post: bool = False
     recommendations = offer_rules(category, segment, stress, float(payload.amount), debits,
                                   savings_rate=feature.savings_rate, salary_amt=float(feature.salary_amt),
                                   emi_count=feature.emi_count, night_txn_ratio=feature.night_txn_ratio,
-                                  unique_payees_7d=feature.unique_payees_7d)
+                                  unique_payees_7d=feature.unique_payees_7d, balance=current_balance)
     existing_offers = {item.product_code: item for item in db.scalars(select(Recommendation).where(Recommendation.user_id == user_id))}
     for code, reason, blocked in recommendations:
         current = existing_offers.get(code)
@@ -167,4 +167,4 @@ def run_pipeline(db: Session, user_id: str, payload, *, force_post: bool = False
     db.add(AuditLog(user_id=user_id, transaction_id=transaction.id, action="txn_score", features={"km_from_last": km, "is_night": is_night, "fraud_score": fraud_score, "amount_vs_typical": round(amount_vs_typical, 3), "balance_ratio": round(balance_ratio, 3), "is_new_payee": is_new_payee, "payee_frequency_30d": payee_frequency_30d}, reasons=hard_reasons))
     db.commit()
     db.refresh(transaction)
-    return transaction, alert_ids
+    return transaction, alert_ids, hard_reasons
