@@ -12,7 +12,12 @@ def ensure_corpus(db: Session) -> None:
     if db.scalar(select(Document.id).limit(1)):
         return
     text = CORPUS_PATH.read_text(encoding="utf-8")
-    chunks = [chunk.strip() for chunk in text.split("## ") if chunk.strip()]
+    # Split on "## " section headers only; the leading "# <corpus title>" H1
+    # (everything before the first "## ") isn't a policy section and must be
+    # dropped, or it survives as its own near-empty chunk that can rank ahead
+    # of real content on a tie.
+    _, _, sections = text.partition("## ")
+    chunks = [chunk.strip() for chunk in sections.split("## ") if chunk.strip()]
     for chunk in chunks:
         title, _, content = chunk.partition("\n")
         db.add(Document(source=title.strip(), content=content.strip()))

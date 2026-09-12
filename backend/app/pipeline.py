@@ -34,6 +34,30 @@ def classify(payee: str, mcc: str | None) -> str:
     return "UNKNOWN"
 
 
+def missed_emi(all_transactions: list[Transaction], now: datetime) -> bool:
+    """Detect a genuinely missed EMI from the user's real EMI cadence.
+
+    An EMI is "missed" when the user has an established, roughly-regular EMI
+    payment history but the gap since the last posted EMI is well beyond
+    their typical cadence. This replaces a dead keyword check (`"missed" in
+    payee`) that nothing in the app ever produces, so it never fired outside
+    of a hand-crafted seed row.
+    """
+    emi_history = sorted(
+        (t for t in all_transactions if t.category == "EMI" and t.status == "posted"),
+        key=lambda t: comparable_time(t.ts),
+    )
+    if len(emi_history) < 2:
+        return False
+    gaps = [
+        (comparable_time(emi_history[index + 1].ts) - comparable_time(emi_history[index].ts)).days
+        for index in range(len(emi_history) - 1)
+    ]
+    typical_gap = median(gaps)
+    days_since_last = (now - comparable_time(emi_history[-1].ts)).days
+    return days_since_last > typical_gap + 15
+
+
 def run_pipeline(db: Session, user_id: str, payload) -> tuple[Transaction, list[str]]:
     now = payload.ts or datetime.now(timezone.utc)
     if now.tzinfo is None:
@@ -56,12 +80,18 @@ def run_pipeline(db: Session, user_id: str, payload) -> tuple[Transaction, list[
     is_new_payee = payee_frequency_30d == 0
     is_night = local_time.hour >= 22 or local_time.hour < 5
     hard_reasons = fraud_hard_rules(amount=float(payload.amount), km_from_last=km, same_device=same_device,
-                                    txns_last_2m=len(recent_debits) + (1 if payload.direction == "debit" else 0), category=category, is_night=is_night)
+                                    txns_last_2m=len(recent_debits) + (1 if payload.direction == "debit" else 0), category=category, is_night=is_night,
+                                    direction=payload.direction)
     anomaly_score = model_fraud_score(amount=float(payload.amount), hour=local_time.hour, is_night=is_night,
                                       km_from_last=km, same_device=same_device, velocity_2m=len(recent_debits),
                                       amount_vs_typical=amount_vs_typical, balance_ratio=balance_ratio,
-                                      is_new_payee=is_new_payee, payee_frequency_30d=payee_frequency_30d)
+                                      is_new_payee=is_new_payee, payee_frequency_30d=payee_frequency_30d,
+                                      direction=payload.direction)
     fraud_score = round(max(anomaly_score, 0.86 if hard_reasons else 0), 3)
+    current_balance = float(account.balance) if account else 0.0
+    insufficient_funds = payload.direction == "debit" and float(payload.amount) > current_balance
+    if insufficient_funds:
+        hard_reasons = hard_reasons + ["INSUFFICIENT_BALANCE"]
     status = "blocked" if hard_reasons or fraud_score >= 0.82 else "posted"
     transaction = Transaction(user_id=user_id, amount=payload.amount, direction=payload.direction,
                               payee=payload.payee, mcc=payload.mcc, lat=payload.lat, lng=payload.lng,
@@ -84,7 +114,7 @@ def run_pipeline(db: Session, user_id: str, payload) -> tuple[Transaction, list[
     feature.emi_count = sum(t.category == "EMI" for t in recent)
     feature.night_txn_ratio = sum((t.ts.hour >= 22 or t.ts.hour < 5) for t in recent) / max(len(recent), 1)
     feature.unique_payees_7d = len({t.payee for t in recent if comparable_time(t.ts) >= now - timedelta(days=7)})
-    feature.missed_emi_30d = 1 if any("missed" in (t.payee or "").lower() for t in recent) else 0
+    feature.missed_emi_30d = 1 if missed_emi(all_transactions, now) else 0
     db.add(feature)
     if feature.missed_emi_30d or feature.savings_rate < -0.15:
         segment = "STRESS"
@@ -123,7 +153,7 @@ def run_pipeline(db: Session, user_id: str, payload) -> tuple[Transaction, list[
         has_stress_alert = db.scalar(select(Alert.id).where(Alert.user_id == user_id, Alert.type == "stress"))
         if not has_stress_alert:
             db.add(Alert(user_id=user_id, type="stress", message_hi="आपकी नकदी सुरक्षित रखना हमारी प्राथमिकता है।", message_en="Your cash flow comes first. Grace support is available."))
-    db.add(AuditLog(user_id=user_id, action="txn_score", features={"km_from_last": km, "is_night": is_night, "fraud_score": fraud_score, "amount_vs_typical": round(amount_vs_typical, 3), "balance_ratio": round(balance_ratio, 3), "is_new_payee": is_new_payee, "payee_frequency_30d": payee_frequency_30d}, reasons=hard_reasons))
+    db.add(AuditLog(user_id=user_id, transaction_id=transaction.id, action="txn_score", features={"km_from_last": km, "is_night": is_night, "fraud_score": fraud_score, "amount_vs_typical": round(amount_vs_typical, 3), "balance_ratio": round(balance_ratio, 3), "is_new_payee": is_new_payee, "payee_frequency_30d": payee_frequency_30d}, reasons=hard_reasons))
     db.commit()
     db.refresh(transaction)
     return transaction, alert_ids

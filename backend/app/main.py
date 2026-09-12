@@ -184,7 +184,7 @@ def explain_transaction(transaction_id: str, authorization: str | None = Header(
     transaction = db.get(Transaction, transaction_id)
     if not transaction or transaction.user_id != user.id:
         raise HTTPException(404, detail={"error": "Transaction not found", "code": "NOT_FOUND", "details": {}})
-    audit = db.scalar(select(AuditLog).where(AuditLog.user_id == user.id).order_by(AuditLog.created_at.desc()))
+    audit = db.scalar(select(AuditLog).where(AuditLog.user_id == user.id, AuditLog.transaction_id == transaction.id).order_by(AuditLog.created_at.desc()))
     reasons = audit.reasons if audit else []
     return {"id": transaction.id, "status": transaction.status, "fraud_score": transaction.fraud_score, "features": audit.features if audit else {}, "fired_rules": reasons, "explanation_en": "This score reflects amount, time, device, location, and velocity signals.", "explanation_hi": "यह स्कोर राशि, समय, डिवाइस, स्थान और गति के संकेतों पर आधारित है।"}
 

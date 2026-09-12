@@ -5,7 +5,7 @@ import { AlertCircle, ArrowLeft, ArrowUpRight, Bell, CheckCircle2, ChevronRight,
 import { api } from "../lib/api";
 
 type Dashboard = {
-  user: { name: string; lang: string; kyc_status: string };
+  user: { id: string; name: string; lang: string; kyc_status: string };
   balance: number;
   segment: string;
   stress_flag: boolean;
@@ -30,11 +30,12 @@ type TranslationCopy = { [Key in keyof typeof translations.en]: string };
 const inputStyle = { display: "block", width: "100%", marginTop: 8, padding: "13px 14px", border: "1px solid var(--line)", borderRadius: 8, background: "#fff", color: "var(--ink)" } as const;
 const primaryButton = { marginTop: 24, width: "100%", padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, border: 0, borderRadius: 8, background: "var(--teal)", color: "white", fontWeight: 700, cursor: "pointer" } as const;
 const choiceButton = { flex: 1, padding: "12px 14px", border: "1px solid var(--line)", borderRadius: 8, background: "white", color: "var(--muted)", cursor: "pointer" } as const;
-const selectedChoice = { borderColor: "var(--teal)", color: "var(--teal)", background: "#e9f3ee", fontWeight: 700 } as const;
+const selectedChoice = { borderColor: "var(--teal)", color: "var(--teal)", background: "#e6eefc", fontWeight: 700 } as const;
 
 function Login({ onLogin }: { onLogin: () => void }) {
   const [phone, setPhone] = useState("9000000001");
   const [pin, setPin] = useState("1234");
+  const [showPin, setShowPin] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -54,16 +55,40 @@ function Login({ onLogin }: { onLogin: () => void }) {
 
   return (
     <main className="app-grid" style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 22 }}>
-      <section className="card fade-up" style={{ maxWidth: 460, width: '100%', padding: 34 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--teal)', fontWeight: 700 }}><ShieldCheck size={22} /> ARTH-AI</div>
-        <h1 className="display" style={{ fontSize: 42, lineHeight: 1.05, margin: '34px 0 12px' }}>Money that<br /><span style={{ color: 'var(--teal)' }}>understands life.</span></h1>
-        <p style={{ color: 'var(--muted)', lineHeight: 1.6 }}>A calmer way to see your money, protect your payments, and find support when it matters.</p>
+      <section className="card fade-up login-card" style={{ maxWidth: 880, width: '100%', padding: 0, overflow: 'hidden' }}>
+        <div className="login-hero" style={{ padding: 40, color: 'white', background: 'linear-gradient(160deg, var(--navy) 0%, var(--navy-deep) 100%)', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 700, letterSpacing: '.06em' }}><ShieldCheck size={22} color="#79b3ff" /> ARTH-AI NET BANKING</div>
+          <h1 className="display" style={{ fontSize: 34, lineHeight: 1.12, margin: '30px 0 14px' }}>Money that<br /><span style={{ color: '#79b3ff' }}>understands life.</span></h1>
+          <p style={{ color: '#c3d4ec', lineHeight: 1.6, maxWidth: 340 }}>A calmer way to see your money, protect your payments, and find support when it matters.</p>
+          <div style={{ marginTop: 'auto', paddingTop: 30, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {['256-bit encrypted session', 'RBI-guideline aligned fraud checks', 'Consent-based KYC, nothing stored beyond a mock reference'].map(line => (
+              <div key={line} style={{ display: 'flex', alignItems: 'flex-start', gap: 9, fontSize: 12, color: '#b7cdec' }}><CheckCircle2 size={15} style={{ flex: '0 0 auto', marginTop: 1, color: '#79b3ff' }} /> {line}</div>
+            ))}
+          </div>
+        </div>
+        <div style={{ padding: 40 }}>
+          <p className="eyebrow" style={{ margin: 0 }}>SECURE LOGIN</p>
+          <h2 className="display" style={{ fontSize: 24, margin: '10px 0 24px', color: 'var(--navy)' }}>Sign in to your account</h2>
 
-        <label style={{ display: 'block', marginTop: 28, fontSize: 13, fontWeight: 700 }}>Mobile number<input value={phone} onChange={e => setPhone(e.target.value)} style={inputStyle} /></label>
-        <label style={{ display: 'block', marginTop: 16, fontSize: 13, fontWeight: 700 }}>PIN<input value={pin} onChange={e => setPin(e.target.value)} type="password" style={inputStyle} /></label>
-        {error && <p style={{ color: '#b34d4d', fontSize: 13 }}>{error}</p>}
-        <button onClick={submit} disabled={submitting} style={{ ...primaryButton, opacity: submitting ? .65 : 1, cursor: submitting ? 'wait' : 'pointer' }}>{submitting ? 'Signing you in...' : 'Enter your account'} {!submitting && <ArrowUpRight size={18} />}</button>
-        <p style={{ color: 'var(--muted)', fontSize: 12, textAlign: 'center', marginTop: 20 }}>Demo access: any seeded phone with PIN 1234</p>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>Mobile number
+            <div style={{ display: 'flex', alignItems: 'stretch', marginTop: 8 }}>
+              <span style={{ display: 'flex', alignItems: 'center', padding: '0 12px', border: '1px solid var(--line)', borderRight: 0, borderRadius: '8px 0 0 8px', background: 'var(--paper)', color: 'var(--muted)', fontWeight: 700, fontSize: 13 }}>+91</span>
+              <input value={phone} onChange={e => setPhone(e.target.value)} inputMode="numeric" style={{ ...inputStyle, marginTop: 0, borderRadius: '0 8px 8px 0' }} />
+            </div>
+          </label>
+          <label style={{ display: 'block', marginTop: 16, fontSize: 13, fontWeight: 700 }}>PIN
+            <div style={{ position: 'relative' }}>
+              <input value={pin} onChange={e => setPin(e.target.value)} type={showPin ? 'text' : 'password'} style={{ ...inputStyle, paddingRight: 44 }} />
+              <button type="button" aria-label={showPin ? 'Hide PIN' : 'Show PIN'} onClick={() => setShowPin(current => !current)} style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', border: 0, background: 'transparent', color: 'var(--muted)', cursor: 'pointer', padding: 8 }}>{showPin ? 'Hide' : 'Show'}</button>
+            </div>
+          </label>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+            <span style={{ color: 'var(--teal)', fontSize: 12, fontWeight: 700 }}>Forgot PIN?</span>
+          </div>
+          {error && <p style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</p>}
+          <button onClick={submit} disabled={submitting} style={{ ...primaryButton, opacity: submitting ? .65 : 1, cursor: submitting ? 'wait' : 'pointer' }}>{submitting ? 'Signing you in...' : 'Enter your account'} {!submitting && <ArrowUpRight size={18} />}</button>
+          <p style={{ color: 'var(--muted)', fontSize: 12, textAlign: 'center', marginTop: 20 }}>Demo access: any seeded phone with PIN 1234</p>
+        </div>
       </section>
     </main>
   );
@@ -97,7 +122,7 @@ function Kyc({ onComplete }: { onComplete: () => void }) {
           <input type="checkbox" checked={consent} onChange={event => setConsent(event.target.checked)} style={{ marginTop: 4, accentColor: 'var(--teal)' }} />
           I consent to Arth-AI verifying this document for account onboarding and storing a timestamped consent record.
         </label>
-        {error && <p style={{ color: '#b34d4d', fontSize: 13 }}>{error}</p>}
+        {error && <p style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</p>}
         <button disabled={!consent} onClick={submit} style={{ ...primaryButton, opacity: consent ? 1 : .45, cursor: consent ? 'pointer' : 'not-allowed' }}>Continue securely <ArrowUpRight size={18} /></button>
       </section>
     </main>
@@ -121,7 +146,7 @@ function Overview({ data, copy, onDetails }: { data: Dashboard; copy: Translatio
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <p style={{ color: 'var(--teal)', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em' }}>Made for this moment</p>
-            <h2 className="display" style={{ fontSize: 28, margin: '8px 0' }}>{data.offers[0]?.product_code?.replace('_', ' ') || 'Your next good move'}</h2>
+            <h2 className="display" style={{ fontSize: 28, margin: '8px 0' }}>{data.offers[0]?.product_code?.replaceAll('_', ' ') || 'Your next good move'}</h2>
             <p style={{ color: 'var(--muted)', maxWidth: 480 }}>{data.offers[0]?.reason || 'Keep exploring your account to discover useful support.'}</p>
           </div>
           <span style={{ padding: 14, color: 'var(--gold)', background: '#fbf2df', borderRadius: '50%' }}><IndianRupee size={25} /></span>
@@ -136,7 +161,7 @@ function Alerts({ data }: { data: Dashboard }) {
   return (
     <div className="fade-up" style={{ marginTop: 28 }}>
       {data.alerts.length ? data.alerts.map(alert => (
-        <div className="card" key={alert.id} style={{ padding: 20, marginBottom: 12, borderLeft: `4px solid ${alert.type === 'fraud' ? '#b34d4d' : alert.type === 'stress' ? 'var(--gold)' : 'var(--teal)'}` }}>
+        <div className="card" key={alert.id} style={{ padding: 20, marginBottom: 12, borderLeft: `4px solid ${alert.type === 'fraud' ? 'var(--danger)' : alert.type === 'stress' ? 'var(--gold)' : 'var(--teal)'}` }}>
           <strong>{alert.type.toUpperCase()}</strong>
           <p style={{ color: 'var(--muted)', lineHeight: 1.5 }}>{alert.message_en}</p>
         </div>
@@ -160,7 +185,7 @@ function RailOffers({ data, copy }: { data: Dashboard; copy: TranslationCopy }) 
     <div className="rail-heading"><span><TrendingUp size={15} /> {copy.recommendations}</span></div>
     {data.offers.length ? data.offers.slice(0, 3).map(offer => <div className="rail-offer" key={offer.id}>
       <span className="offer-mark"><IndianRupee size={15} /></span>
-      <span><strong>{offer.product_code.replace('_', ' ')}</strong><small>{offer.blocked_by_ethics ? 'Paused by safety rules' : offer.reason}</small></span>
+      <span><strong>{offer.product_code.replaceAll('_', ' ')}</strong><small>{offer.blocked_by_ethics ? 'Paused by safety rules' : offer.reason}</small></span>
       <ChevronRight size={15} />
     </div>) : <div className="rail-empty"><Clock3 size={17} /><span>Recommendations will appear as your account evolves.</span></div>}
   </section>;
@@ -187,7 +212,7 @@ function Conversation({ chat, reply, ask, language, setLanguage, copy }: { chat:
           {([['en', 'English'], ['hi', 'हिंदी'], ['gu', 'ગુજરાતી']] as const).map(([code, label]) => <button key={code} onClick={() => setLanguage(code)} style={{ ...choiceButton, flex: 'none', padding: '8px 12px', ...(language === code ? selectedChoice : {}) }}>{label}</button>)}
         </div>
         {chat && <p style={{ textAlign: 'right', color: 'var(--teal)' }}>{chat}</p>}
-        {reply && <p style={{ background: '#eef4ef', padding: 14, borderRadius: 8, lineHeight: 1.5 }}>{reply}</p>}
+        {reply && <p style={{ background: '#e6eefc', padding: 14, borderRadius: 8, lineHeight: 1.5 }}>{reply}</p>}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 30 }}>
           {suggestions.map(item => (
             <button key={item} onClick={() => ask(item)} style={{ border: '1px solid var(--line)', borderRadius: 999, background: 'white', padding: '9px 13px', color: 'var(--ink)', cursor: 'pointer' }}>{item}</button>
@@ -224,7 +249,7 @@ function Offers({ data, copy }: { data: Dashboard; copy: TranslationCopy }) {
       <h2 className="display" style={{ fontSize: 30 }}>{copy.recommendations}</h2>
       <p style={{ color: 'var(--muted)', lineHeight: 1.5 }}>{copy.recommendationText}</p>
       {data.offers.length ? data.offers.map(offer => <div key={offer.id} style={{ padding: '18px 0', borderBottom: '1px solid var(--line)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center' }}><strong style={{ fontSize: 18 }}>{offer.product_code.replace('_', ' ')}</strong><span style={{ color: offer.blocked_by_ethics ? '#b34d4d' : 'var(--teal)', fontSize: 12, fontWeight: 700 }}>{offer.blocked_by_ethics ? 'PAUSED BY ETHICS' : 'RECOMMENDED'}</span></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center' }}><strong style={{ fontSize: 18 }}>{offer.product_code.replaceAll('_', ' ')}</strong><span style={{ color: offer.blocked_by_ethics ? 'var(--danger)' : 'var(--teal)', fontSize: 12, fontWeight: 700 }}>{offer.blocked_by_ethics ? 'PAUSED BY ETHICS' : 'RECOMMENDED'}</span></div>
         <p style={{ color: 'var(--muted)', lineHeight: 1.5 }}>{offer.reason}</p>
         <button disabled={offer.blocked_by_ethics || submitting === offer.id} onClick={() => void accept(offer.id)} style={{ border: '1px solid var(--teal)', borderRadius: 8, background: offer.blocked_by_ethics ? '#f1f1f1' : 'white', color: offer.blocked_by_ethics ? 'var(--muted)' : 'var(--teal)', padding: '9px 13px', cursor: offer.blocked_by_ethics ? 'not-allowed' : 'pointer' }}>{offer.blocked_by_ethics ? copy.paused : submitting === offer.id ? 'Recording...' : copy.request}</button>
       </div>) : <p style={{ color: 'var(--muted)' }}>No recommendations yet. Your next safe move will appear here.</p>}
@@ -234,21 +259,85 @@ function Offers({ data, copy }: { data: Dashboard; copy: TranslationCopy }) {
   </div>;
 }
 
+type UserExplanation = { user_id: string; segment: string; stress_flag: boolean; ethics_explanation: string };
+type TxnExplanation = { id: string; status: string; fraud_score: number; features: Record<string, unknown>; fired_rules: string[]; explanation_en: string; explanation_hi: string };
+
 function Explain({ data }: { data: Dashboard }) {
+  const [userExplain, setUserExplain] = useState<UserExplanation | null>(null);
+  const [userError, setUserError] = useState('');
+  const [openTxnId, setOpenTxnId] = useState<string | null>(null);
+  const [txnExplain, setTxnExplain] = useState<TxnExplanation | null>(null);
+  const [txnLoading, setTxnLoading] = useState(false);
+  const [txnError, setTxnError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    api<UserExplanation>(`/explain/user/${data.user.id}`)
+      .then(result => { if (!cancelled) setUserExplain(result); })
+      .catch(err => { if (!cancelled) setUserError(err instanceof Error ? err.message : 'Could not load the audit trail'); });
+    return () => { cancelled = true; };
+  }, [data.user.id]);
+
+  const toggleTxn = async (id: string) => {
+    if (openTxnId === id) { setOpenTxnId(null); setTxnExplain(null); return; }
+    setOpenTxnId(id);
+    setTxnExplain(null);
+    setTxnError('');
+    setTxnLoading(true);
+    try {
+      const result = await api<TxnExplanation>(`/explain/txn/${id}`);
+      setTxnExplain(result);
+    } catch (err) {
+      setTxnError(err instanceof Error ? err.message : 'Could not load this transaction’s explanation');
+    } finally {
+      setTxnLoading(false);
+    }
+  };
+
   return (
     <div className="fade-up" style={{ marginTop: 28 }}>
       <div className="card" style={{ padding: 24 }}>
         <p style={{ color: 'var(--teal)', fontWeight: 700, fontSize: 12, textTransform: 'uppercase' }}>Auditor view</p>
         <h2 className="display" style={{ fontSize: 30 }}>Why Arth-AI chose this path</h2>
         <p style={{ color: 'var(--muted)', lineHeight: 1.6 }}>The system combines rolling behavior, transaction context, and hard safety rules. The assistant cannot override this gate.</p>
+        {userError && <p role="alert" style={{ color: 'var(--danger)', fontSize: 13, marginTop: 12 }}>{userError}</p>}
         <div style={{ marginTop: 24 }}>
-          {[['Behavioral segment', data.segment], ['Stress flag', data.stress_flag ? 'Active: credit paused' : 'Clear'], ['Ethics decision', data.stress_flag ? 'Grace support only' : 'Relevant offers allowed']].map(([label, value]) => (
+          {[['Behavioral segment', (userExplain ?? data).segment], ['Stress flag', (userExplain ?? data).stress_flag ? 'Active: credit paused' : 'Clear'], ['Ethics decision', userExplain?.ethics_explanation ?? (data.stress_flag ? 'Grace support only' : 'Relevant offers allowed')]].map(([label, value]) => (
             <div key={String(label)} style={{ display: 'flex', justifyContent: 'space-between', gap: 20, padding: '14px 0', borderBottom: '1px solid var(--line)' }}>
               <span style={{ color: 'var(--muted)' }}>{String(label)}</span>
-              <strong>{String(value)}</strong>
+              <strong style={{ textAlign: 'right', maxWidth: 320 }}>{String(value)}</strong>
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="card" style={{ padding: 24, marginTop: 20 }}>
+        <h3 className="display" style={{ fontSize: 20, margin: 0 }}>Per-transaction explanation</h3>
+        <p style={{ color: 'var(--muted)', lineHeight: 1.5 }}>Pick a recent transaction to see the exact fired rules and feature values behind its fraud score.</p>
+        {data.transactions.length === 0 && <p style={{ color: 'var(--muted)' }}>No transactions yet.</p>}
+        {data.transactions.map(txn => (
+          <div key={txn.id} style={{ borderBottom: '1px solid var(--line)' }}>
+            <button onClick={() => void toggleTxn(txn.id)} style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, padding: '14px 0', border: 0, background: 'transparent', cursor: 'pointer', textAlign: 'left' }}>
+              <span><strong>{txn.payee}</strong><br /><small style={{ color: 'var(--muted)' }}>{txn.category} · {txn.status} · score {txn.fraud_score}</small></span>
+              <ChevronRight size={16} style={{ transform: openTxnId === txn.id ? 'rotate(90deg)' : 'none', transition: 'transform .15s' }} />
+            </button>
+            {openTxnId === txn.id && (
+              <div style={{ paddingBottom: 16 }}>
+                {txnLoading && <p style={{ color: 'var(--muted)' }}>Loading explanation...</p>}
+                {txnError && <p role="alert" style={{ color: 'var(--danger)', fontSize: 13 }}>{txnError}</p>}
+                {txnExplain && (
+                  <div style={{ background: '#f7f9f8', borderRadius: 8, padding: 14 }}>
+                    <p style={{ margin: 0 }}>{txnExplain.explanation_en}</p>
+                    <p style={{ margin: '10px 0 4px', fontWeight: 700, fontSize: 12, textTransform: 'uppercase', color: 'var(--muted)' }}>Fired rules</p>
+                    <p style={{ margin: 0 }}>{txnExplain.fired_rules.length ? txnExplain.fired_rules.join(', ') : 'None — no hard rule triggered'}</p>
+                    <p style={{ margin: '10px 0 4px', fontWeight: 700, fontSize: 12, textTransform: 'uppercase', color: 'var(--muted)' }}>Features</p>
+                    <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: 12 }}>{JSON.stringify(txnExplain.features, null, 2)}</pre>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -301,8 +390,8 @@ function Simulator({ onComplete }: { onComplete: () => void }) {
             </label>
           ))}
         </div>
-        {error && <p style={{ color: '#b34d4d', marginTop: 16 }}>{error}</p>}
-        {result && <div className="card" style={{ marginTop: 18, padding: 16, background: '#eef5f1' }}><strong>Status:</strong> {result.status}<br /><strong>Fraud score:</strong> {result.fraud_score}<br /><strong>Category:</strong> {result.category}</div>}
+        {error && <p style={{ color: 'var(--danger)', marginTop: 16 }}>{error}</p>}
+        {result && <div className="card" style={{ marginTop: 18, padding: 16, background: '#e6eefc' }}><strong>Status:</strong> {result.status}<br /><strong>Fraud score:</strong> {result.fraud_score}<br /><strong>Category:</strong> {result.category}</div>}
         <button onClick={submit} style={{ ...primaryButton, marginTop: 20 }}>Run safety check <ArrowUpRight size={18} /></button>
       </div>
     </div>
@@ -390,7 +479,7 @@ function App() {
       {toast && <div className="toast" role="status"><span className="toast-icon"><Bell size={17} /></span><span><strong>{toast.title}</strong><small>{toast.message}</small></span><button aria-label="Dismiss alert" onClick={() => setToast(null)}><X size={16} /></button></div>}
       <aside className="bank-sidebar">
         <div className="sidebar-brand"><span className="brand-icon"><ShieldCheck size={17} /></span><span>ARTH<span>-</span>AI</span></div>
-        <div className="profile-mini"><span className="profile-avatar">{dashboard.user.name.slice(0, 1)}</span><span><strong>{dashboard.user.name}</strong><small>{dashboard.segment.replace('_', ' ')}</small></span></div>
+        <div className="profile-mini"><span className="profile-avatar">{dashboard.user.name.slice(0, 1)}</span><span><strong>{dashboard.user.name}</strong><small>{dashboard.segment.replaceAll('_', ' ')}</small></span></div>
         <p className="side-label">YOUR BANKING</p>
         <nav className="side-nav">
           {nav.map(({ label, text, icon: Icon }) => <button className={view === label ? 'active' : ''} key={label} onClick={() => navigate(label)}><Icon size={17} /><span>{text}</span>{view === label && <ChevronRight size={14} />}</button>)}
