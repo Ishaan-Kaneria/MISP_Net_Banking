@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from .config import settings
 from .db import Base, engine, get_db
-from .llm import generate_reply_with_status
+from .llm import generate_reply_with_status, normalize_language
 from .models import Account, Alert, AuditLog, ChatMessage, KycEvent, Recommendation, Transaction, User, UserFeature, UserScore
 from .rag.retrieve import retrieve
 from .pipeline import run_pipeline
@@ -135,9 +135,9 @@ def accept_offer(recommendation_id: str, authorization: str | None = Header(defa
 def chat(payload: ChatRequest, authorization: str | None = Header(default=None), db: Session = Depends(get_db)):
     user = current_user(authorization, db)
     score = db.get(UserScore, user.id)
-    language = payload.lang.lower()[:2]
+    language = normalize_language(payload.lang)
     message = payload.message.lower()
-    db.add(ChatMessage(user_id=user.id, role="user", content=payload.message, lang=payload.lang))
+    db.add(ChatMessage(user_id=user.id, role="user", content=payload.message, lang=language))
     policy_context = retrieve(db, payload.message)
     traces = [f"rag:{document.source}" for document in policy_context]
     if score and score.stress_flag and any(word in message for word in ("loan", "credit", "लोन", "क्रेडिट", "લોન", "ક્રેડિટ")):
@@ -145,7 +145,7 @@ def chat(payload: ChatRequest, authorization: str | None = Header(default=None),
             "hi": "आपके नकदी प्रवाह पर दबाव है, इसलिए क्रेडिट अनुरोध अभी रोक दिया गया है। मैं 15 दिन की ग्रेस अवधि में मदद कर सकता हूं।",
             "gu": "તમારા રોકડ પ્રવાહ પર દબાણ હોવાથી ક્રેડિટ વિનંતી હાલમાં રોકવામાં આવી છે. હું 15 દિવસની ગ્રેસ અવધિમાં મદદ કરી શકું છું.",
         }.get(language, "Your credit request is paused while your cash flow is under stress. I can help request a 15-day grace period.")
-        db.add(ChatMessage(user_id=user.id, role="assistant", content=reply, lang=payload.lang))
+        db.add(ChatMessage(user_id=user.id, role="assistant", content=reply, lang=language))
         db.commit()
         return {"reply": reply, "tool_traces": traces + ["ethics_gate: credit refused"]}
     if any(word in message for word in ("balance", "बैलेंस", "બેલેન્સ")):
@@ -155,7 +155,7 @@ def chat(payload: ChatRequest, authorization: str | None = Header(default=None),
             "hi": f"आपका उपलब्ध बैलेंस ₹{balance:,.2f} है।",
             "gu": f"તમારું ઉપલબ્ધ બેલેન્સ ₹{balance:,.2f} છે.",
         }.get(language, f"Your available balance is ₹{balance:,.2f}.")
-        db.add(ChatMessage(user_id=user.id, role="assistant", content=reply, lang=payload.lang))
+        db.add(ChatMessage(user_id=user.id, role="assistant", content=reply, lang=language))
         db.commit()
         return {"reply": reply, "tool_traces": traces + ["get_balance"]}
     lower_message = message
@@ -169,10 +169,10 @@ def chat(payload: ChatRequest, authorization: str | None = Header(default=None),
         reply = {"hi": "आपकी हाल की गतिविधि में भुगतान, राशि और सुरक्षा स्थिति दिखाई जाती है। किसी संदिग्ध भुगतान को सुरक्षा जांच में भेजा जा सकता है।", "gu": "તમારી તાજેતરની પ્રવૃત્તિમાં ચુકવણી, રકમ અને સુરક્ષા સ્થિતિ દેખાય છે. શંકાસ્પદ ચુકવણી સુરક્ષા તપાસમાં જઈ શકે છે."}.get(language, "Your recent activity shows each payment, amount, and safety status. Suspicious payments may be sent for a safety check.")
     elif any(word in lower_message for word in ("save", "saving", "emergency", "बचत", "आपात", "બચત")):
         reply = {"hi": "आपकी बचत दर और 30 दिन के खर्च को साथ देखकर आपातकालीन निधि का लक्ष्य तय करना आसान होगा।", "gu": "તમારા બચત દર અને 30 દિવસના ખર્ચને સાથે જોઈને ઇમરજન્સી ફંડનું લક્ષ્ય નક્કી કરી શકાય છે."}.get(language, "Compare your savings rate with your 30-day spend, then set an emergency-fund target that fits your cash flow.")
-    model_reply, llm_status = generate_reply_with_status(payload.message, payload.lang, "\n\n".join(document.content for document in policy_context), bool(score and score.stress_flag))
+    model_reply, llm_status = generate_reply_with_status(payload.message, language, "\n\n".join(document.content for document in policy_context), bool(score and score.stress_flag))
     if model_reply:
         reply = model_reply
-    db.add(ChatMessage(user_id=user.id, role="assistant", content=reply, lang=payload.lang))
+    db.add(ChatMessage(user_id=user.id, role="assistant", content=reply, lang=language))
     db.commit()
     traces.append(f"llm:{llm_status}")
     return {"reply": reply, "tool_traces": traces}
