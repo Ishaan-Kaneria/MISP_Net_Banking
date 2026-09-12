@@ -68,7 +68,7 @@ export function AddMoneyModal({ userName, onClose, onSuccess }: { userName: stri
         name: "MISP Bank",
         description: "Add money to your account",
         prefill: { name: userName },
-        theme: { color: "#0b57b0" },
+        theme: { color: "#7c3aed" },
         handler: (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
           void (async () => {
             try {

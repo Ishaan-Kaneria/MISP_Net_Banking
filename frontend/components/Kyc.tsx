@@ -25,11 +25,13 @@ export function Kyc({ onComplete }: { onComplete: () => void }) {
   };
 
   return (
-    <main className="grid min-h-screen place-items-center bg-paper p-5">
-      <section className="w-full max-w-lg animate-rise rounded-2xl border border-border bg-white p-9 shadow-card">
+    <main className="relative grid min-h-screen place-items-center overflow-hidden bg-paper p-5">
+      <div className="blob h-96 w-96 gradient-brand animate-blob-float" style={{ top: "-10%", right: "-8%" }} />
+      <div className="blob h-72 w-72 bg-violet animate-blob-float" style={{ bottom: "-12%", left: "-8%", animationDelay: "-5s" }} />
+      <section className="relative w-full max-w-lg animate-rise rounded-2xl border border-border bg-white p-9 shadow-card">
         <div className="text-sm font-bold tracking-wide text-primary">SECURE ONBOARDING</div>
         <h1 className="mt-6 text-3xl font-bold leading-tight text-navy md:text-4xl">
-          Let&apos;s verify<br /><span className="text-primary">your identity.</span>
+          Let&apos;s verify<br /><span className="gradient-text">your identity.</span>
         </h1>
         <p className="mt-3 leading-relaxed text-muted">
           This is a mock DigiLocker check for the demo. We retain only the verification reference and your consent record, never an identity document image.
