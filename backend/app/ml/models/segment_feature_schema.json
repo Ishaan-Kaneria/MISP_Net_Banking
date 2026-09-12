@@ -1,0 +1,14 @@
+{
+  "features": [
+    "spend_30d",
+    "savings_rate",
+    "missed_emi",
+    "hospital_spend",
+    "unique_payees",
+    "salary_amount",
+    "velocity",
+    "entertainment_spend"
+  ],
+  "normalization": "backend-compatible scaling",
+  "version": "synthetic-20260912"
+}

@@ -1,4 +1,6 @@
 import numpy as np
+import joblib
+from pathlib import Path
 
 SEGMENTS = ("FIRST_JOB", "MARRIAGE", "MEDICAL", "STRESS", "SAVER", "HIGH_VELOCITY", "BASELINE")
 
@@ -31,7 +33,10 @@ def _training_data() -> tuple[np.ndarray, np.ndarray]:
 
 
 _MODEL = None
-if XGBClassifier is not None:
+_MODEL_PATH = Path(__file__).parent / "models" / "life_stage_classifier.joblib"
+if _MODEL_PATH.exists():
+    _MODEL = joblib.load(_MODEL_PATH)
+elif XGBClassifier is not None:
     features, labels = _training_data()
     _MODEL = XGBClassifier(n_estimators=40, max_depth=3, learning_rate=0.08, objective="multi:softmax", num_class=len(SEGMENTS), eval_metric="mlogloss", random_state=7)
     _MODEL.fit(features, labels)

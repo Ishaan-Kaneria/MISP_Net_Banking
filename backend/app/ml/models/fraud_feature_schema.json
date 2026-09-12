@@ -1,0 +1,13 @@
+{
+  "features": [
+    "amount",
+    "log_amount",
+    "hour",
+    "is_night",
+    "km_from_last",
+    "same_device",
+    "velocity_2m"
+  ],
+  "model": "RandomForestClassifier",
+  "version": "synthetic-20260912"
+}

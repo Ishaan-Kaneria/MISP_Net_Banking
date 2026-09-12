@@ -1,0 +1,76 @@
+{
+  "fraud": {
+    "train_rows": 13032,
+    "validation_rows": 3240,
+    "test_rows": 7728,
+    "fraud_rate_test": 0.048524844720496896,
+    "threshold": 0.4599999999999999,
+    "precision": 0.9588477366255144,
+    "recall": 0.6213333333333333,
+    "f1": 0.7540453074433657,
+    "pr_auc": 0.6734200917275182,
+    "roc_auc": 0.821723559544857
+  },
+  "segmentation": {
+    "train_rows": 3360,
+    "test_rows": 840,
+    "macro_f1": 0.7900350453498858,
+    "report": {
+      "FIRST_JOB": {
+        "precision": 0.90625,
+        "recall": 0.9666666666666667,
+        "f1-score": 0.9354838709677419,
+        "support": 120.0
+      },
+      "MARRIAGE": {
+        "precision": 0.6936936936936937,
+        "recall": 0.6416666666666667,
+        "f1-score": 0.6666666666666666,
+        "support": 120.0
+      },
+      "MEDICAL": {
+        "precision": 0.8,
+        "recall": 0.7666666666666667,
+        "f1-score": 0.7829787234042553,
+        "support": 120.0
+      },
+      "STRESS": {
+        "precision": 0.975609756097561,
+        "recall": 1.0,
+        "f1-score": 0.9876543209876543,
+        "support": 120.0
+      },
+      "SAVER": {
+        "precision": 0.7868852459016393,
+        "recall": 0.8,
+        "f1-score": 0.7933884297520661,
+        "support": 120.0
+      },
+      "HIGH_VELOCITY": {
+        "precision": 0.7416666666666667,
+        "recall": 0.7416666666666667,
+        "f1-score": 0.7416666666666667,
+        "support": 120.0
+      },
+      "BASELINE": {
+        "precision": 0.6198347107438017,
+        "recall": 0.625,
+        "f1-score": 0.6224066390041494,
+        "support": 120.0
+      },
+      "accuracy": 0.7916666666666666,
+      "macro avg": {
+        "precision": 0.7891342961576232,
+        "recall": 0.7916666666666666,
+        "f1-score": 0.7900350453498858,
+        "support": 840.0
+      },
+      "weighted avg": {
+        "precision": 0.7891342961576232,
+        "recall": 0.7916666666666666,
+        "f1-score": 0.7900350453498858,
+        "support": 840.0
+      }
+    }
+  }
+}
