@@ -3,6 +3,7 @@
 import { AlertCircle, CheckCircle2, Clock3, IndianRupee, TrendingUp } from "lucide-react";
 import type { Dashboard } from "../../lib/types";
 import { money } from "../../lib/types";
+import { computeAccountHealth } from "../../lib/health";
 import type { TranslationCopy } from "../../lib/translations";
 
 function RailSection({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
@@ -73,17 +74,30 @@ export function RailActivity({ data, copy }: { data: Dashboard; copy: Translatio
   );
 }
 
+const HEALTH_STYLES = {
+  good: { dot: "bg-[#6fc06f]", bar: "bg-primary", title: (copy: TranslationCopy) => copy.lookingGood, text: (copy: TranslationCopy) => copy.stable },
+  attention: { dot: "bg-gold", bar: "bg-gold", title: (copy: TranslationCopy) => copy.attentionMode, text: (copy: TranslationCopy) => copy.attentionText },
+  support: { dot: "bg-danger", bar: "bg-danger", title: (copy: TranslationCopy) => copy.supportMode, text: (copy: TranslationCopy) => copy.support },
+} as const;
+
 export function RailAccount({ data, copy }: { data: Dashboard; copy: TranslationCopy }) {
+  // A real composite score (lib/health.ts) from savings rate, missed EMIs,
+  // and live fraud/stress alerts — replaces a bar that was hardcoded to
+  // exactly 48% or 78% off the stress flag alone and never moved for any
+  // other reason, so it looked identical no matter what was actually
+  // happening on the account.
+  const health = computeAccountHealth(data);
+  const style = HEALTH_STYLES[health.tier];
   return (
     <div className="rounded-xl border border-border bg-white p-[18px] shadow-[0_2px_8px_rgba(10,46,92,.04)]">
       <div className="flex justify-between text-[10px] font-bold tracking-widest text-muted">
         <span>{copy.accountHealth.toUpperCase()}</span>
-        <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#6fc06f]" />
+        <span className={`inline-block h-1.5 w-1.5 rounded-full ${style.dot}`} />
       </div>
-      <strong className="mt-3.5 block text-lg text-navy">{data.stress_flag ? copy.supportMode : copy.lookingGood}</strong>
-      <p className="my-2 text-xs leading-relaxed text-muted">{data.stress_flag ? copy.support : copy.stable}</p>
+      <strong className="mt-3.5 block text-lg text-navy">{style.title(copy)}</strong>
+      <p className="my-2 text-xs leading-relaxed text-muted">{style.text(copy)}</p>
       <div className="h-[5px] overflow-hidden rounded-full bg-[#e3eaf6]">
-        <span className="block h-full rounded-full bg-primary" style={{ width: data.stress_flag ? "48%" : "78%" }} />
+        <span className={`block h-full rounded-full transition-[width] duration-500 ${style.bar}`} style={{ width: `${health.score}%` }} />
       </div>
     </div>
   );
