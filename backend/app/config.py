@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000"
     gemini_api_key: str = ""
     llm_model: str = "gemini-3.6-flash"
+    razorpay_key_id: str = ""
+    razorpay_key_secret: str = ""
+    wallet_topup_max_amount: int = 100000
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

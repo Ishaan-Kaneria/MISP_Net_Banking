@@ -14,7 +14,7 @@ from .rules import fraud_hard_rules, haversine_km, offer_rules
 CATEGORIES = {
     "salary": "SALARY", "hospital": "HOSPITAL", "apollo": "HOSPITAL", "grocery": "UPI_GROCERY",
     "zepto": "UPI_GROCERY", "fuel": "FUEL", "school": "EDUCATION", "emi": "EMI",
-    "netflix": "ENTERTAINMENT", "transfer": "TRANSFER",
+    "netflix": "ENTERTAINMENT", "transfer": "TRANSFER", "razorpay": "TOPUP",
 }
 
 
@@ -58,7 +58,15 @@ def missed_emi(all_transactions: list[Transaction], now: datetime) -> bool:
     return days_since_last > typical_gap + 15
 
 
-def run_pipeline(db: Session, user_id: str, payload) -> tuple[Transaction, list[str]]:
+def run_pipeline(db: Session, user_id: str, payload, *, force_post: bool = False) -> tuple[Transaction, list[str]]:
+    """`force_post` is for money that has already been verified and captured
+    by an external, already-KYC'd payment gateway (e.g. a Razorpay top-up
+    whose signature we just verified) — the fraud engine still scores and
+    records the transaction for the audit trail, but cannot leave it
+    "blocked": the payer's money has already left their bank via Razorpay,
+    so failing to credit the ledger would mean it simply vanished from the
+    user's view. Never set this for a debit or for money that hasn't
+    already cleared an external gateway."""
     now = payload.ts or datetime.now(timezone.utc)
     if now.tzinfo is None:
         now = now.replace(tzinfo=timezone.utc)
@@ -92,7 +100,7 @@ def run_pipeline(db: Session, user_id: str, payload) -> tuple[Transaction, list[
     insufficient_funds = payload.direction == "debit" and float(payload.amount) > current_balance
     if insufficient_funds:
         hard_reasons = hard_reasons + ["INSUFFICIENT_BALANCE"]
-    status = "blocked" if hard_reasons or fraud_score >= 0.82 else "posted"
+    status = "posted" if force_post else ("blocked" if hard_reasons or fraud_score >= 0.82 else "posted")
     transaction = Transaction(user_id=user_id, amount=payload.amount, direction=payload.direction,
                               payee=payload.payee, mcc=payload.mcc, lat=payload.lat, lng=payload.lng,
                               device_id=payload.device_id, ts=now, category=category, status=status, fraud_score=fraud_score)

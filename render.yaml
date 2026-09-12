@@ -43,3 +43,9 @@ services:
         sync: false
       - key: LLM_MODEL
         value: gemini-3.6-flash
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: WALLET_TOPUP_MAX_AMOUNT
+        value: "100000"

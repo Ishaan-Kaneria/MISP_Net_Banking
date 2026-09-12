@@ -8,10 +8,11 @@ from sqlalchemy.orm import Session
 from .config import settings
 from .db import Base, engine, get_db
 from .llm import generate_reply_with_status
-from .models import Account, Alert, AuditLog, ChatMessage, KycEvent, Recommendation, Transaction, User, UserFeature, UserScore
+from .models import Account, Alert, AuditLog, ChatMessage, KycEvent, Recommendation, Transaction, User, UserFeature, UserScore, WalletTopup
+from .payments import RazorpayError, create_order, is_configured as razorpay_is_configured, verify_payment_signature
 from .rag.retrieve import retrieve
 from .pipeline import run_pipeline
-from .schemas import ChatRequest, HealthResponse, KycRequest, LoginRequest, TransactionRequest, TransactionResponse
+from .schemas import ChatRequest, HealthResponse, KycRequest, LoginRequest, TransactionRequest, TransactionResponse, WalletTopupOrderRequest, WalletTopupVerifyRequest
 from .security import create_token, decode_token, hash_pin, verify_pin
 from .seed import seed
 
@@ -84,6 +85,54 @@ def create_transaction(payload: TransactionRequest, authorization: str | None = 
 @app.post("/admin/simulate-txn", response_model=TransactionResponse)
 def simulate_transaction(payload: TransactionRequest, authorization: str | None = Header(default=None), db: Session = Depends(get_db)):
     return create_transaction(payload, authorization, db)
+
+
+@app.get("/wallet/topup/config")
+def wallet_topup_config(authorization: str | None = Header(default=None), db: Session = Depends(get_db)):
+    current_user(authorization, db)
+    return {"enabled": razorpay_is_configured(), "key_id": settings.razorpay_key_id if razorpay_is_configured() else None, "max_amount": settings.wallet_topup_max_amount}
+
+
+@app.post("/wallet/topup/order")
+def create_wallet_topup_order(payload: WalletTopupOrderRequest, authorization: str | None = Header(default=None), db: Session = Depends(get_db)):
+    user = current_user(authorization, db)
+    if not razorpay_is_configured():
+        raise HTTPException(503, detail={"error": "Add Money is not configured on this server yet", "code": "RAZORPAY_NOT_CONFIGURED", "details": {}})
+    if payload.amount > settings.wallet_topup_max_amount:
+        raise HTTPException(400, detail={"error": f"Amount exceeds the maximum top-up of ₹{settings.wallet_topup_max_amount:,}", "code": "AMOUNT_TOO_LARGE", "details": {}})
+    topup = WalletTopup(user_id=user.id, amount=payload.amount, razorpay_order_id="pending", status="created")
+    db.add(topup)
+    db.flush()
+    try:
+        order = create_order(amount=payload.amount, receipt=topup.id)
+    except RazorpayError as error:
+        db.rollback()
+        raise HTTPException(502, detail={"error": "Could not start the payment with Razorpay", "code": str(error), "details": {}}) from error
+    topup.razorpay_order_id = order["id"]
+    db.commit()
+    return {"order_id": order["id"], "amount": order["amount"], "currency": order["currency"], "key_id": settings.razorpay_key_id}
+
+
+@app.post("/wallet/topup/verify", response_model=TransactionResponse)
+def verify_wallet_topup(payload: WalletTopupVerifyRequest, authorization: str | None = Header(default=None), db: Session = Depends(get_db)):
+    user = current_user(authorization, db)
+    topup = db.scalar(select(WalletTopup).where(WalletTopup.razorpay_order_id == payload.razorpay_order_id))
+    if not topup or topup.user_id != user.id:
+        raise HTTPException(404, detail={"error": "Top-up order not found", "code": "NOT_FOUND", "details": {}})
+    if topup.status == "paid" and topup.transaction_id:
+        transaction = db.get(Transaction, topup.transaction_id)
+        return TransactionResponse(id=transaction.id, status=transaction.status, fraud_score=transaction.fraud_score, category=transaction.category, alert_ids=[])
+    if not verify_payment_signature(order_id=payload.razorpay_order_id, payment_id=payload.razorpay_payment_id, signature=payload.razorpay_signature):
+        topup.status = "failed"
+        db.commit()
+        raise HTTPException(400, detail={"error": "Payment signature could not be verified", "code": "SIGNATURE_INVALID", "details": {}})
+    topup.razorpay_payment_id = payload.razorpay_payment_id
+    topup_request = TransactionRequest(amount=topup.amount, direction="credit", payee="Razorpay Top-up", device_id=user.device_id)
+    transaction, alert_ids = run_pipeline(db, user.id, topup_request, force_post=True)
+    topup.status = "paid"
+    topup.transaction_id = transaction.id
+    db.commit()
+    return TransactionResponse(id=transaction.id, status=transaction.status, fraud_score=transaction.fraud_score, category=transaction.category, alert_ids=alert_ids)
 
 
 @app.get("/dashboard")

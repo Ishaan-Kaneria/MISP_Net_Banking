@@ -115,8 +115,11 @@ button, input { font: inherit; }
 .summary-account span, .summary-account strong, .summary-account small { display: block; }
 .summary-account span, .summary-account small { color: #a3bcdd; font-size: 10px; }
 .summary-account strong { margin: 5px 0 8px; color: white; font-size: 13px; letter-spacing: .08em; }
-.summary-action button { display: flex; align-items: center; gap: 6px; padding: 10px 12px; border: 1px solid #6fa6ea; border-radius: 5px; background: transparent; color: white; font-size: 11px; cursor: pointer; }
+.summary-action { display: flex; flex-direction: column; gap: 8px; }
+.summary-action button { display: flex; align-items: center; gap: 6px; padding: 10px 12px; border: 1px solid #6fa6ea; border-radius: 5px; background: transparent; color: white; font-size: 11px; cursor: pointer; white-space: nowrap; }
 .summary-action button:hover { background: rgba(255,255,255,.1); }
+.modal-overlay { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 20px; background: rgba(10,26,48,.55); animation: toast-in .15s ease both; }
+.modal-card { width: 100%; max-width: 420px; }
 .summary-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 14px; }
 .summary-metrics .card { border-radius: 7px; box-shadow: none; }
 .workspace-view { margin-top: 24px; }

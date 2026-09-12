@@ -31,6 +31,16 @@ class ChatRequest(BaseModel):
     lang: str = "en"
 
 
+class WalletTopupOrderRequest(BaseModel):
+    amount: Decimal = Field(gt=0)
+
+
+class WalletTopupVerifyRequest(BaseModel):
+    razorpay_order_id: str
+    razorpay_payment_id: str
+    razorpay_signature: str
+
+
 class TransactionResponse(BaseModel):
     id: str
     status: str
