@@ -7,7 +7,8 @@ from sqlalchemy.orm import Session
 
 from .config import settings
 from .db import Base, engine, get_db
-from .models import Account, Alert, AuditLog, KycEvent, Recommendation, Transaction, User, UserFeature, UserScore
+from .models import Account, Alert, AuditLog, ChatMessage, KycEvent, Recommendation, Transaction, User, UserFeature, UserScore
+from .rag.retrieve import retrieve
 from .pipeline import run_pipeline
 from .schemas import ChatRequest, HealthResponse, KycRequest, LoginRequest, TransactionRequest, TransactionResponse
 from .security import create_token, decode_token, hash_pin, verify_pin
@@ -121,12 +122,24 @@ def accept_offer(recommendation_id: str, authorization: str | None = Header(defa
 def chat(payload: ChatRequest, authorization: str | None = Header(default=None), db: Session = Depends(get_db)):
     user = current_user(authorization, db)
     score = db.get(UserScore, user.id)
+    db.add(ChatMessage(user_id=user.id, role="user", content=payload.message, lang=payload.lang))
+    policy_context = retrieve(db, payload.message)
+    traces = [f"rag:{document.source}" for document in policy_context]
     if score and score.stress_flag and any(word in payload.message.lower() for word in ("loan", "credit", "लोन")):
-        return {"reply": "Your credit request is paused while your cash flow is under stress. I can help request a 15-day grace period.", "tool_traces": ["ethics_gate: credit refused"]}
+        reply = "Your credit request is paused while your cash flow is under stress. I can help request a 15-day grace period."
+        db.add(ChatMessage(user_id=user.id, role="assistant", content=reply, lang=payload.lang))
+        db.commit()
+        return {"reply": reply, "tool_traces": traces + ["ethics_gate: credit refused"]}
     if any(word in payload.message.lower() for word in ("balance", "बैलेंस")):
         account = db.scalar(select(Account).where(Account.user_id == user.id))
-        return {"reply": f"Your available balance is ₹{float(account.balance if account else 0):,.2f}.", "tool_traces": ["get_balance"]}
-    return {"reply": "I can help with your balance, offers, recent transactions, or a grace period.", "tool_traces": []}
+        reply = f"Your available balance is ₹{float(account.balance if account else 0):,.2f}."
+        db.add(ChatMessage(user_id=user.id, role="assistant", content=reply, lang=payload.lang))
+        db.commit()
+        return {"reply": reply, "tool_traces": traces + ["get_balance"]}
+    reply = "I can help with your balance, offers, recent transactions, or a grace period."
+    db.add(ChatMessage(user_id=user.id, role="assistant", content=reply, lang=payload.lang))
+    db.commit()
+    return {"reply": reply, "tool_traces": traces}
 
 
 @app.get("/explain/txn/{transaction_id}")

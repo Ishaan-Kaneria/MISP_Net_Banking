@@ -50,6 +50,8 @@ The Compose stack starts PostgreSQL with pgvector, the API, and the web app. The
 
 Fraud scoring uses a deterministic IsolationForest trained on synthetic normal transactions at application boot. Hard fraud rules remain an independent final gate, so model behavior can never weaken a rule-based block.
 
+Chat messages are persisted in PostgreSQL/SQLite and responses include the policy documents used by the lightweight retrieval layer. Add a Gemini or Groq key later for live multilingual generation without changing the API contract.
+
 ## Product boundaries
 
 Identity, UPI, DigiLocker, WhatsApp, and customer funds are mocked. No Aadhaar bytes or real payment credentials are accepted. Fraud and ethics decisions happen server-side; the chat assistant cannot bypass them.

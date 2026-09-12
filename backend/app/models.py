@@ -110,3 +110,20 @@ class KycEvent(Base):
     mock_ref: Mapped[str] = mapped_column(String(120))
     consent_json: Mapped[dict] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    role: Mapped[str] = mapped_column(String(20))
+    content: Mapped[str] = mapped_column(Text)
+    lang: Mapped[str] = mapped_column(String(2), default="en")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class Document(Base):
+    __tablename__ = "documents"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    source: Mapped[str] = mapped_column(String(120))
+    content: Mapped[str] = mapped_column(Text)
