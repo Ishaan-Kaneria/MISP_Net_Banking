@@ -54,6 +54,8 @@ Life-stage scoring uses an XGBoost multiclass model trained from synthetic aggre
 
 Chat messages are persisted in PostgreSQL/SQLite and responses include the policy documents used by the lightweight retrieval layer. Add a Gemini or Groq key later for live multilingual generation without changing the API contract.
 
+When `GEMINI_API_KEY` is set, the general chat path calls Gemini server-side with retrieved policy context. Balance and stressed-credit decisions remain handled by deterministic FastAPI tools and ethics rules before the model is reached.
+
 ## Product boundaries
 
 Identity, UPI, DigiLocker, WhatsApp, and customer funds are mocked. No Aadhaar bytes or real payment credentials are accepted. Fraud and ethics decisions happen server-side; the chat assistant cannot bypass them.

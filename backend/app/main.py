@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from .config import settings
 from .db import Base, engine, get_db
+from .llm import generate_reply
 from .models import Account, Alert, AuditLog, ChatMessage, KycEvent, Recommendation, Transaction, User, UserFeature, UserScore
 from .rag.retrieve import retrieve
 from .pipeline import run_pipeline
@@ -137,6 +138,9 @@ def chat(payload: ChatRequest, authorization: str | None = Header(default=None),
         db.commit()
         return {"reply": reply, "tool_traces": traces + ["get_balance"]}
     reply = "I can help with your balance, offers, recent transactions, or a grace period."
+    model_reply = generate_reply(payload.message, payload.lang, "\n\n".join(document.content for document in policy_context), bool(score and score.stress_flag))
+    if model_reply:
+        reply = model_reply
     db.add(ChatMessage(user_id=user.id, role="assistant", content=reply, lang=payload.lang))
     db.commit()
     return {"reply": reply, "tool_traces": traces}
