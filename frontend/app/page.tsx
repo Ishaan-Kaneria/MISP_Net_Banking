@@ -1,65 +1,350 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
-import { ArrowUpRight, Bell, ChevronRight, CircleHelp, IndianRupee, LayoutDashboard, LockKeyhole, MessageCircle, ShieldCheck, Sparkles, WalletCards, Zap } from "lucide-react";
+import { ArrowUpRight, Bell, ChevronRight, CircleHelp, IndianRupee, LayoutDashboard, MessageCircle, ShieldCheck, WalletCards, Zap } from "lucide-react";
 import { api } from "../lib/api";
 
-type Dashboard = { user: { name: string; lang: string; kyc_status: string }; balance: number; segment: string; stress_flag: boolean; features: Record<string, number>; transactions: Array<{ id: string; amount: number; direction: string; payee: string; category: string; status: string; fraud_score: number; ts: string }>; offers: Array<{ id: string; product_code: string; reason: string; blocked_by_ethics: boolean }>; alerts: Array<{ id: string; type: string; message_en: string; message_hi: string }> };
+type Dashboard = {
+  user: { name: string; lang: string; kyc_status: string };
+  balance: number;
+  segment: string;
+  stress_flag: boolean;
+  features: Record<string, number>;
+  transactions: Array<{ id: string; amount: number; direction: string; payee: string; category: string; status: string; fraud_score: number; ts: string }>;
+  offers: Array<{ id: string; product_code: string; reason: string; blocked_by_ethics: boolean }>;
+  alerts: Array<{ id: string; type: string; message_en: string; message_hi: string }>;
+};
 
 const money = (value: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value);
+
+const inputStyle = { display: "block", width: "100%", marginTop: 8, padding: "13px 14px", border: "1px solid var(--line)", borderRadius: 8, background: "#fff", color: "var(--ink)" } as const;
+const primaryButton = { marginTop: 24, width: "100%", padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, border: 0, borderRadius: 8, background: "var(--teal)", color: "white", fontWeight: 700, cursor: "pointer" } as const;
+const choiceButton = { flex: 1, padding: "12px 14px", border: "1px solid var(--line)", borderRadius: 8, background: "white", color: "var(--muted)", cursor: "pointer" } as const;
+const selectedChoice = { borderColor: "var(--teal)", color: "var(--teal)", background: "#e9f3ee", fontWeight: 700 } as const;
 
 function Login({ onLogin }: { onLogin: () => void }) {
   const [phone, setPhone] = useState("9000000001");
   const [pin, setPin] = useState("1234");
   const [error, setError] = useState("");
-  const submit = async () => { try { const result = await api<{ access_token: string }>("/auth/login", { method: "POST", body: JSON.stringify({ phone, pin }) }); localStorage.setItem("arthai_token", result.access_token); onLogin(); } catch (err) { setError(err instanceof Error ? err.message : "Unable to sign in"); } };
-  return <main className="app-grid" style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 22 }}><section className="card fade-up" style={{ maxWidth: 460, width: "100%", padding: 34 }}><div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--teal)", fontWeight: 700 }}><ShieldCheck size={22} /> ARTH-AI</div><h1 className="display" style={{ fontSize: 42, lineHeight: 1.05, margin: "34px 0 12px" }}>Money that<br /><span style={{ color: "var(--teal)" }}>understands life.</span></h1><p style={{ color: "var(--muted)", lineHeight: 1.6 }}>A calmer way to see your money, protect your payments, and find support when it matters.</p><label style={{ display: "block", marginTop: 28, fontSize: 13, fontWeight: 700 }}>Mobile number<input value={phone} onChange={e => setPhone(e.target.value)} style={inputStyle} /></label><label style={{ display: "block", marginTop: 16, fontSize: 13, fontWeight: 700 }}>PIN<input value={pin} onChange={e => setPin(e.target.value)} type="password" style={inputStyle} /></label>{error && <p style={{ color: "#b34d4d", fontSize: 13 }}>{error}</p>}<button onClick={submit} style={primaryButton}>Enter your account <ArrowUpRight size={18} /></button><p style={{ color: "var(--muted)", fontSize: 12, textAlign: "center", marginTop: 20 }}>Demo access: any seeded phone with PIN 1234</p></section></main>;
+
+  const submit = async () => {
+    try {
+      const result = await api<{ access_token: string }>('/auth/login', { method: 'POST', body: JSON.stringify({ phone, pin }) });
+      localStorage.setItem('arthai_token', result.access_token);
+      onLogin();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to sign in');
+    }
+  };
+
+  return (
+    <main className="app-grid" style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 22 }}>
+      <section className="card fade-up" style={{ maxWidth: 460, width: '100%', padding: 34 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--teal)', fontWeight: 700 }}><ShieldCheck size={22} /> ARTH-AI</div>
+        <h1 className="display" style={{ fontSize: 42, lineHeight: 1.05, margin: '34px 0 12px' }}>Money that<br /><span style={{ color: 'var(--teal)' }}>understands life.</span></h1>
+        <p style={{ color: 'var(--muted)', lineHeight: 1.6 }}>A calmer way to see your money, protect your payments, and find support when it matters.</p>
+
+        <label style={{ display: 'block', marginTop: 28, fontSize: 13, fontWeight: 700 }}>Mobile number<input value={phone} onChange={e => setPhone(e.target.value)} style={inputStyle} /></label>
+        <label style={{ display: 'block', marginTop: 16, fontSize: 13, fontWeight: 700 }}>PIN<input value={pin} onChange={e => setPin(e.target.value)} type="password" style={inputStyle} /></label>
+        {error && <p style={{ color: '#b34d4d', fontSize: 13 }}>{error}</p>}
+        <button onClick={submit} style={primaryButton}>Enter your account <ArrowUpRight size={18} /></button>
+        <p style={{ color: 'var(--muted)', fontSize: 12, textAlign: 'center', marginTop: 20 }}>Demo access: any seeded phone with PIN 1234</p>
+      </section>
+    </main>
+  );
 }
 
-const inputStyle = { display: "block", width: "100%", marginTop: 8, padding: "13px 14px", border: "1px solid var(--line)", borderRadius: 8, background: "#fff", color: "var(--ink)" };
-const primaryButton = { marginTop: 24, width: "100%", padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, border: 0, borderRadius: 8, background: "var(--teal)", color: "white", fontWeight: 700, cursor: "pointer" };
+function Kyc({ onComplete }: { onComplete: () => void }) {
+  const [docType, setDocType] = useState<'aadhaar' | 'pan'>('pan');
+  const [consent, setConsent] = useState(false);
+  const [error, setError] = useState("");
+
+  const submit = async () => {
+    try {
+      await api('/kyc/verify', { method: 'POST', body: JSON.stringify({ doc_type: docType, consent, locale: 'en' }) });
+      onComplete();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Verification failed');
+    }
+  };
+
+  return (
+    <main className="app-grid" style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 22 }}>
+      <section className="card fade-up" style={{ maxWidth: 520, width: '100%', padding: 34 }}>
+        <div style={{ color: 'var(--teal)', fontWeight: 700, letterSpacing: '.04em' }}>SECURE ONBOARDING</div>
+        <h1 className="display" style={{ fontSize: 38, lineHeight: 1.1, margin: '28px 0 12px' }}>Let&apos;s verify<br /><span style={{ color: 'var(--teal)' }}>your identity.</span></h1>
+        <p style={{ color: 'var(--muted)', lineHeight: 1.6 }}>This is a mock DigiLocker check for the demo. We retain only the verification reference and your consent record, never an identity document image.</p>
+        <div style={{ display: 'flex', gap: 10, marginTop: 26 }}>
+          <button onClick={() => setDocType('pan')} style={{ ...choiceButton, ...(docType === 'pan' ? selectedChoice : {}) }}>PAN card</button>
+          <button onClick={() => setDocType('aadhaar')} style={{ ...choiceButton, ...(docType === 'aadhaar' ? selectedChoice : {}) }}>Aadhaar</button>
+        </div>
+        <label style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginTop: 28, color: 'var(--ink)', lineHeight: 1.5, fontSize: 14 }}>
+          <input type="checkbox" checked={consent} onChange={event => setConsent(event.target.checked)} style={{ marginTop: 4, accentColor: 'var(--teal)' }} />
+          I consent to Arth-AI verifying this document for account onboarding and storing a timestamped consent record.
+        </label>
+        {error && <p style={{ color: '#b34d4d', fontSize: 13 }}>{error}</p>}
+        <button disabled={!consent} onClick={submit} style={{ ...primaryButton, opacity: consent ? 1 : .45, cursor: consent ? 'pointer' : 'not-allowed' }}>Continue securely <ArrowUpRight size={18} /></button>
+      </section>
+    </main>
+  );
+}
+
+function Metric({ label, value, detail }: { label: string; value: string; detail: string }) {
+  return (
+    <div className="card" style={{ padding: 18 }}>
+      <p style={{ color: 'var(--muted)', fontSize: 12, margin: 0 }}>{label}</p>
+      <strong className="display" style={{ display: 'block', fontSize: 25, marginTop: 12 }}>{value}</strong>
+      <span style={{ color: 'var(--muted)', fontSize: 11 }}>{detail}</span>
+    </div>
+  );
+}
+
+function Overview({ data }: { data: Dashboard }) {
+  return (
+    <div className="fade-up">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginTop: 28 }}>
+        <Metric label="Savings rate" value={`${Math.round((data.features.savings_rate || 0) * 100)}%`} detail="30 day rhythm" />
+        <Metric label="Spend this month" value={money(data.features.spend_30d || 0)} detail="Across your essentials" />
+        <Metric label="Payments watched" value={`${data.transactions.length}`} detail="Recent activity" />
+      </div>
+      <div className="card" style={{ marginTop: 18, padding: 22 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <p style={{ color: 'var(--teal)', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em' }}>Made for this moment</p>
+            <h2 className="display" style={{ fontSize: 28, margin: '8px 0' }}>{data.offers[0]?.product_code?.replace('_', ' ') || 'Your next good move'}</h2>
+            <p style={{ color: 'var(--muted)', maxWidth: 480 }}>{data.offers[0]?.reason || 'Keep exploring your account to discover useful support.'}</p>
+          </div>
+          <span style={{ padding: 14, color: 'var(--gold)', background: '#fbf2df', borderRadius: '50%' }}><IndianRupee size={25} /></span>
+        </div>
+        <button style={{ marginTop: 14, padding: '10px 0', border: 0, borderBottom: '1px solid var(--teal)', background: 'transparent', color: 'var(--teal)', fontWeight: 700 }}>See the details <ChevronRight size={16} style={{ verticalAlign: 'middle' }} /></button>
+      </div>
+
+      <h3 style={{ margin: '32px 0 12px', fontSize: 16 }}>Recent activity</h3>
+      {data.transactions.slice(0, 5).map(txn => (
+        <div key={txn.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 0', borderBottom: '1px solid var(--line)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ width: 34, height: 34, display: 'grid', placeItems: 'center', borderRadius: 8, background: txn.status === 'blocked' ? '#fbe8e6' : '#eef5f1', color: txn.status === 'blocked' ? '#b34d4d' : 'var(--teal)' }}>{txn.direction === 'debit' ? '↓' : '↑'}</span>
+            <div>
+              <strong>{txn.payee}</strong>
+              <div style={{ color: 'var(--muted)', fontSize: 12 }}>{txn.category}</div>
+            </div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <strong>{txn.direction === 'debit' ? '-' : '+'}{money(txn.amount)}</strong>
+            <div style={{ color: txn.status === 'blocked' ? '#b34d4d' : 'var(--muted)', fontSize: 12 }}>{txn.status}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Alerts({ data }: { data: Dashboard }) {
+  return (
+    <div className="fade-up" style={{ marginTop: 28 }}>
+      {data.alerts.length ? data.alerts.map(alert => (
+        <div className="card" key={alert.id} style={{ padding: 20, marginBottom: 12, borderLeft: `4px solid ${alert.type === 'fraud' ? '#b34d4d' : alert.type === 'stress' ? 'var(--gold)' : 'var(--teal)'}` }}>
+          <strong>{alert.type.toUpperCase()}</strong>
+          <p style={{ color: 'var(--muted)', lineHeight: 1.5 }}>{alert.message_en}</p>
+        </div>
+      )) : <p style={{ color: 'var(--muted)' }}>All clear. We will surface anything important here.</p>}
+    </div>
+  );
+}
+
+function Conversation({ chat, reply, ask }: { chat: string; reply: string; ask: (message: string) => void }) {
+  return (
+    <div className="fade-up" style={{ marginTop: 28 }}>
+      <div className="card" style={{ padding: 24, minHeight: 280 }}>
+        <p style={{ color: 'var(--teal)', fontWeight: 700 }}>Arth-AI assistant</p>
+        <h2 className="display" style={{ fontSize: 28 }}>A little clarity goes a long way.</h2>
+        {chat && <p style={{ textAlign: 'right', color: 'var(--teal)' }}>{chat}</p>}
+        {reply && <p style={{ background: '#eef4ef', padding: 14, borderRadius: 8, lineHeight: 1.5 }}>{reply}</p>}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 30 }}>
+          {['What is my balance?', 'Show my offers', 'I need grace'].map(item => (
+            <button key={item} onClick={() => ask(item)} style={{ border: '1px solid var(--line)', borderRadius: 999, background: 'white', padding: '9px 13px', color: 'var(--ink)', cursor: 'pointer' }}>{item}</button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Explain({ data }: { data: Dashboard }) {
+  return (
+    <div className="fade-up" style={{ marginTop: 28 }}>
+      <div className="card" style={{ padding: 24 }}>
+        <p style={{ color: 'var(--teal)', fontWeight: 700, fontSize: 12, textTransform: 'uppercase' }}>Auditor view</p>
+        <h2 className="display" style={{ fontSize: 30 }}>Why Arth-AI chose this path</h2>
+        <p style={{ color: 'var(--muted)', lineHeight: 1.6 }}>The system combines rolling behavior, transaction context, and hard safety rules. The assistant cannot override this gate.</p>
+        <div style={{ marginTop: 24 }}>
+          {[['Behavioral segment', data.segment], ['Stress flag', data.stress_flag ? 'Active: credit paused' : 'Clear'], ['Ethics decision', data.stress_flag ? 'Grace support only' : 'Relevant offers allowed']].map(([label, value]) => (
+            <div key={String(label)} style={{ display: 'flex', justifyContent: 'space-between', gap: 20, padding: '14px 0', borderBottom: '1px solid var(--line)' }}>
+              <span style={{ color: 'var(--muted)' }}>{String(label)}</span>
+              <strong>{String(value)}</strong>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Simulator({ onComplete }: { onComplete: () => void }) {
+  const [form, setForm] = useState({ amount: '48000', payee: 'New city transfer', lat: '28.61', lng: '77.20', device_id: 'new-device', ts: '' });
+  const [result, setResult] = useState<{ status: string; fraud_score: number; category: string } | null>(null);
+  const [error, setError] = useState('');
+
+  const update = (key: keyof typeof form, value: string) => setForm(current => ({ ...current, [key]: value }));
+
+  const submit = async () => {
+    try {
+      setError('');
+      const response = await api<{ status: string; fraud_score: number; category: string }>('/admin/simulate-txn', {
+        method: 'POST',
+        body: JSON.stringify({
+          amount: Number(form.amount),
+          direction: 'debit',
+          payee: form.payee,
+          lat: Number(form.lat),
+          lng: Number(form.lng),
+          device_id: form.device_id,
+          ...(form.ts ? { ts: new Date(form.ts).toISOString() } : {}),
+        }),
+      });
+      setResult(response);
+      onComplete();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Simulation failed');
+    }
+  };
+
+  return (
+    <div className="fade-up" style={{ marginTop: 28 }}>
+      <div className="card" style={{ padding: 24 }}>
+        <p style={{ color: 'var(--teal)', fontWeight: 700, fontSize: 12, textTransform: 'uppercase' }}>Live demo injector</p>
+        <h2 className="display" style={{ fontSize: 30 }}>Test the safety engine</h2>
+        <p style={{ color: 'var(--muted)', lineHeight: 1.5 }}>Inject a UPI-like debit and watch the server explain whether it posts or blocks.</p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginTop: 22 }}>
+          {([['amount', 'Amount (INR)'], ['payee', 'Payee'], ['lat', 'Latitude'], ['lng', 'Longitude'], ['device_id', 'Device ID'], ['ts', 'Time (optional)']] as const).map(([key, label]) => (
+            <label key={key} style={{ fontSize: 12, fontWeight: 700 }}>{label}
+              <input
+                type={key === 'ts' ? 'datetime-local' : key === 'amount' || key === 'lat' || key === 'lng' ? 'number' : 'text'}
+                value={form[key]}
+                onChange={event => update(key, event.target.value)}
+                style={{ display: 'block', width: '100%', marginTop: 6, padding: '10px 12px', border: '1px solid var(--line)', borderRadius: 8, background: '#fff' }}
+              />
+            </label>
+          ))}
+        </div>
+        {error && <p style={{ color: '#b34d4d', marginTop: 16 }}>{error}</p>}
+        {result && <div className="card" style={{ marginTop: 18, padding: 16, background: '#eef5f1' }}><strong>Status:</strong> {result.status}<br /><strong>Fraud score:</strong> {result.fraud_score}<br /><strong>Category:</strong> {result.category}</div>}
+        <button onClick={submit} style={{ ...primaryButton, marginTop: 20 }}>Run safety check <ArrowUpRight size={18} /></button>
+      </div>
+    </div>
+  );
+}
 
 function App() {
   const [data, setData] = useState<Dashboard | null>(null);
   const [authReady, setAuthReady] = useState(false);
-  const [view, setView] = useState("Overview");
-  const [chat, setChat] = useState("");
-  const [reply, setReply] = useState("");
+  const [view, setView] = useState('Overview');
+  const [chat, setChat] = useState('');
+  const [reply, setReply] = useState('');
   const [loading, setLoading] = useState(true);
-  const load = async () => { try { setData(await api<Dashboard>("/dashboard")); } catch { localStorage.removeItem("arthai_token"); } finally { setLoading(false); } };
-  useEffect(() => { setAuthReady(true); if (localStorage.getItem("arthai_token")) load(); else setLoading(false); }, []);
-  if (!authReady) return <main style={{ padding: 40 }}>Preparing your account...</main>;
-  if (!localStorage.getItem("arthai_token") && !data) return <Login onLogin={load} />;
-  if (loading || !data) return <main style={{ padding: 40 }}>Loading your account...</main>;
-  if (data.user.kyc_status !== "verified") return <Kyc onComplete={load} />;
-  const nav = [{ label: "Overview", icon: LayoutDashboard }, { label: "Alerts", icon: Bell }, { label: "Conversation", icon: MessageCircle }, { label: "Explain", icon: CircleHelp }, { label: "Simulator", icon: Zap }];
-  const ask = async (message: string) => { setChat(message); const result = await api<{ reply: string }>("/chat", { method: "POST", body: JSON.stringify({ message, lang: data.user.lang }) }); setReply(result.reply); };
-  return <main className="app-grid"><div className="shell"><header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 18, marginBottom: 46 }}><div style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 700, letterSpacing: ".04em" }}><span style={{ background: "var(--teal)", color: "white", padding: 8, borderRadius: 8 }}><ShieldCheck size={18} /></span> ARTH-AI</div><div style={{ display: "flex", alignItems: "center", gap: 20 }}><span className="nav-link">EN / HI / GU</span><button onClick={() => { localStorage.removeItem("arthai_token"); location.reload(); }} style={{ border: 0, background: "transparent", color: "var(--muted)", cursor: "pointer" }}>Sign out</button></div></header><div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 260px", gap: 46 }}><section><p style={{ color: "var(--teal)", fontSize: 13, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase" }}>Good morning, {data.user.name.split(" ")[0]}</p><h1 className="display" style={{ fontSize: "clamp(38px, 6vw, 66px)", lineHeight: 1, margin: "10px 0 18px", fontWeight: 600 }}>Your money,<br /><span style={{ color: "var(--teal)" }}>in context.</span></h1><p style={{ maxWidth: 500, color: "var(--muted)", lineHeight: 1.6 }}>A clear view of where you stand today, with decisions shaped around your real life.</p><nav style={{ display: "flex", gap: 20, borderBottom: "1px solid var(--line)", marginTop: 42, overflowX: "auto" }}>{nav.map(({ label, icon: Icon }) => <button key={label} onClick={() => setView(label)} style={{ whiteSpace: "nowrap", padding: "0 0 14px", border: 0, borderBottom: view === label ? "2px solid var(--teal)" : "2px solid transparent", background: "transparent", color: view === label ? "var(--teal)" : "var(--muted)", fontWeight: 700, cursor: "pointer", display: "flex", gap: 7, alignItems: "center" }}><Icon size={16} />{label}</button>)}</nav>{view === "Overview" && <Overview data={data} />}{view === "Alerts" && <Alerts data={data} />}{view === "Conversation" && <Conversation chat={chat} reply={reply} ask={ask} />}{view === "Explain" && <Explain data={data} />}</section><aside><div className="card" style={{ padding: 20, marginTop: 10 }}><div style={{ display: "flex", justifyContent: "space-between", color: "var(--muted)", fontSize: 13 }}><span>Available balance</span><WalletCards size={18} /></div><div className="display" style={{ fontSize: 30, marginTop: 20 }}>{money(data.balance)}</div><div style={{ marginTop: 18, color: "var(--teal)", fontSize: 13, fontWeight: 700 }}>Protected by Arth-AI</div></div><div style={{ marginTop: 25, padding: 4 }}><p style={{ fontSize: 12, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".1em" }}>Your current lens</p><div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 14 }}><span style={{ width: 42, height: 42, display: "grid", placeItems: "center", borderRadius: "50%", background: "#e4f0e9", color: "var(--teal)" }}><Sparkles size={20} /></span><div><strong>{data.segment.replace("_", " ")}</strong><p style={{ color: "var(--muted)", fontSize: 12, margin: "4px 0" }}>{data.stress_flag ? "Cash flow comes first" : "Building steady momentum"}</p></div></div></div></aside></div></div></main>;
-  return <main className="app-grid"><div className="shell"><header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 18, marginBottom: 46 }}><div style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 700, letterSpacing: ".04em" }}><span style={{ background: "var(--teal)", color: "white", padding: 8, borderRadius: 8 }}><ShieldCheck size={18} /></span> ARTH-AI</div><div style={{ display: "flex", alignItems: "center", gap: 20 }}><span className="nav-link">EN / HI / GU</span><button onClick={() => { localStorage.removeItem("arthai_token"); location.reload(); }} style={{ border: 0, background: "transparent", color: "var(--muted)", cursor: "pointer" }}>Sign out</button></div></header><div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 260px", gap: 46 }}><section><p style={{ color: "var(--teal)", fontSize: 13, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase" }}>Good morning, {data.user.name.split(" ")[0]}</p><h1 className="display" style={{ fontSize: "clamp(38px, 6vw, 66px)", lineHeight: 1, margin: "10px 0 18px", fontWeight: 600 }}>Your money,<br /><span style={{ color: "var(--teal)" }}>in context.</span></h1><p style={{ maxWidth: 500, color: "var(--muted)", lineHeight: 1.6 }}>A clear view of where you stand today, with decisions shaped around your real life.</p><nav style={{ display: "flex", gap: 20, borderBottom: "1px solid var(--line)", marginTop: 42, overflowX: "auto" }}>{nav.map(({ label, icon: Icon }) => <button key={label} onClick={() => setView(label)} style={{ whiteSpace: "nowrap", padding: "0 0 14px", border: 0, borderBottom: view === label ? "2px solid var(--teal)" : "2px solid transparent", background: "transparent", color: view === label ? "var(--teal)" : "var(--muted)", fontWeight: 700, cursor: "pointer", display: "flex", gap: 7, alignItems: "center" }}><Icon size={16} />{label}</button>)}</nav>{view === "Overview" && <Overview data={data} />}{view === "Alerts" && <Alerts data={data} />}{view === "Conversation" && <Conversation chat={chat} reply={reply} ask={ask} />}{view === "Explain" && <Explain data={data} />}{view === "Simulator" && <Simulator onComplete={load} />}</section><aside><div className="card" style={{ padding: 20, marginTop: 10 }}><div style={{ display: "flex", justifyContent: "space-between", color: "var(--muted)", fontSize: 13 }}><span>Available balance</span><WalletCards size={18} /></div><div className="display" style={{ fontSize: 30, marginTop: 20 }}>{money(data.balance)}</div><div style={{ marginTop: 18, color: "var(--teal)", fontSize: 13, fontWeight: 700 }}>Protected by Arth-AI</div></div><div style={{ marginTop: 25, padding: 4 }}><p style={{ fontSize: 12, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".1em" }}>Your current lens</p><div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 14 }}><span style={{ width: 42, height: 42, display: "grid", placeItems: "center", borderRadius: "50%", background: "#e4f0e9", color: "var(--teal)" }}><Sparkles size={20} /></span><div><strong>{data.segment.replace("_", " ")}</strong><p style={{ color: "var(--muted)", fontSize: 12, margin: "4px 0" }}>{data.stress_flag ? "Cash flow comes first" : "Building steady momentum"}</p></div></div></div></aside></div></div></main>;
-}
 
-function Kyc({ onComplete }: { onComplete: () => void }) {
-  const [docType, setDocType] = useState<"aadhaar" | "pan">("pan");
-  const [consent, setConsent] = useState(false);
-  const [error, setError] = useState("");
-  const submit = async () => {
+  const load = async () => {
     try {
-      await api("/kyc/verify", { method: "POST", body: JSON.stringify({ doc_type: docType, consent, locale: "en" }) });
-      onComplete();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Verification failed");
+      setData(await api<Dashboard>('/dashboard'));
+    } catch {
+      localStorage.removeItem('arthai_token');
+    } finally {
+      setLoading(false);
     }
   };
-  return <main className="app-grid" style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 22 }}><section className="card fade-up" style={{ maxWidth: 520, width: "100%", padding: 34 }}><div style={{ color: "var(--teal)", fontWeight: 700, letterSpacing: ".04em" }}>SECURE ONBOARDING</div><h1 className="display" style={{ fontSize: 38, lineHeight: 1.1, margin: "28px 0 12px" }}>Let&apos;s verify<br /><span style={{ color: "var(--teal)" }}>your identity.</span></h1><p style={{ color: "var(--muted)", lineHeight: 1.6 }}>This is a mock DigiLocker check for the demo. We retain only the verification reference and your consent record, never an identity document image.</p><div style={{ display: "flex", gap: 10, marginTop: 26 }}><button onClick={() => setDocType("pan")} style={{ ...choiceButton, ...(docType === "pan" ? selectedChoice : {}) }}>PAN card</button><button onClick={() => setDocType("aadhaar")} style={{ ...choiceButton, ...(docType === "aadhaar" ? selectedChoice : {}) }}>Aadhaar</button></div><label style={{ display: "flex", gap: 12, alignItems: "flex-start", marginTop: 28, color: "var(--ink)", lineHeight: 1.5, fontSize: 14 }}><input type="checkbox" checked={consent} onChange={event => setConsent(event.target.checked)} style={{ marginTop: 4, accentColor: "var(--teal)" }} />I consent to Arth-AI verifying this document for account onboarding and storing a timestamped consent record.</label>{error && <p style={{ color: "#b34d4d", fontSize: 13 }}>{error}</p>}<button disabled={!consent} onClick={submit} style={{ ...primaryButton, opacity: consent ? 1 : .45, cursor: consent ? "pointer" : "not-allowed" }}>Continue securely <ArrowUpRight size={18} /></button></section></main>;
+
+  useEffect(() => {
+    setAuthReady(true);
+    if (localStorage.getItem('arthai_token')) void load();
+    else setLoading(false);
+  }, []);
+
+  if (!authReady) return <main style={{ padding: 40 }}>Preparing your account...</main>;
+  if (!localStorage.getItem('arthai_token') && !data) return <Login onLogin={load} />;
+  if (loading || !data) return <main style={{ padding: 40 }}>Loading your account...</main>;
+
+  const dashboard = data;
+  if (dashboard.user.kyc_status !== 'verified') return <Kyc onComplete={load} />;
+
+  const nav = [{ label: 'Overview', icon: LayoutDashboard }, { label: 'Alerts', icon: Bell }, { label: 'Conversation', icon: MessageCircle }, { label: 'Explain', icon: CircleHelp }, { label: 'Simulator', icon: Zap }];
+
+  const ask = async (message: string) => {
+    setChat(message);
+    const result = await api<{ reply: string }>('/chat', { method: 'POST', body: JSON.stringify({ message, lang: dashboard.user.lang }) });
+    setReply(result.reply);
+  };
+
+  return (
+    <main className="app-grid">
+      <div className="shell">
+        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 18, marginBottom: 46 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 700, letterSpacing: '.04em' }}>
+            <span style={{ background: 'var(--teal)', color: 'white', padding: 8, borderRadius: 8 }}><ShieldCheck size={18} /></span> ARTH-AI
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+            <span className="nav-link">EN / HI / GU</span>
+            <button onClick={() => { localStorage.removeItem('arthai_token'); location.reload(); }} style={{ border: 0, background: 'transparent', color: 'var(--muted)', cursor: 'pointer' }}>Sign out</button>
+          </div>
+        </header>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 260px', gap: 46 }}>
+          <section>
+            <p style={{ color: 'var(--teal)', fontSize: 13, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase' }}>Good morning, {dashboard.user.name.split(' ')[0]}</p>
+            <h1 className="display" style={{ fontSize: 'clamp(38px, 6vw, 66px)', lineHeight: 1, margin: '10px 0 18px', fontWeight: 600 }}>Your money,<br /><span style={{ color: 'var(--teal)' }}>in context.</span></h1>
+            <p style={{ maxWidth: 500, color: 'var(--muted)', lineHeight: 1.6 }}>A clear view of where you stand today, with decisions shaped around your real life.</p>
+
+            <nav style={{ display: 'flex', gap: 20, borderBottom: '1px solid var(--line)', marginTop: 42, overflowX: 'auto' }}>
+              {nav.map(({ label, icon: Icon }) => (
+                <button key={label} onClick={() => setView(label)} style={{ whiteSpace: 'nowrap', padding: '0 0 14px', border: 0, borderBottom: view === label ? '2px solid var(--teal)' : '2px solid transparent', background: 'transparent', color: view === label ? 'var(--teal)' : 'var(--muted)', fontWeight: 700, cursor: 'pointer', display: 'flex', gap: 7, alignItems: 'center' }}><Icon size={16} />{label}</button>
+              ))}
+            </nav>
+
+            {view === 'Overview' && <Overview data={dashboard} />}
+            {view === 'Alerts' && <Alerts data={dashboard} />}
+            {view === 'Conversation' && <Conversation chat={chat} reply={reply} ask={ask} />}
+            {view === 'Explain' && <Explain data={dashboard} />}
+            {view === 'Simulator' && <Simulator onComplete={load} />}
+          </section>
+
+          <aside style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <div className="card" style={{ padding: 18, position: 'sticky', top: 18 }}>
+              <p style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', fontSize: 11, margin: 0 }}>Account balance</p>
+              <h2 className="display" style={{ fontSize: 34, margin: '12px 0 6px' }}>{money(dashboard.balance)}</h2>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--muted)' }}>
+                <span>{dashboard.segment}</span>
+                <span style={{ color: dashboard.stress_flag ? 'var(--gold)' : 'var(--teal)', fontWeight: 700 }}>{dashboard.stress_flag ? 'Stress mode' : 'Stable'}</span>
+              </div>
+            </div>
+
+            <div className="card" style={{ padding: 18 }}>
+              <p style={{ color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', fontSize: 11, margin: '0 0 14px' }}>Support</p>
+              {dashboard.offers.slice(0, 3).map(offer => (
+                <div key={offer.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--line)' }}>
+                  <div>
+                    <strong>{offer.product_code.replace('_', ' ')}</strong>
+                    <div style={{ color: 'var(--muted)', fontSize: 12 }}>{offer.blocked_by_ethics ? 'Paused by ethics' : 'Recommended'}</div>
+                  </div>
+                  <ChevronRight size={16} color="var(--muted)" />
+                </div>
+              ))}
+            </div>
+          </aside>
+        </div>
+      </div>
+    </main>
+  );
 }
 
-function Overview({ data }: { data: Dashboard }) { return <div className="fade-up"><div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginTop: 28 }}><Metric label="Savings rate" value={`${Math.round((data.features.savings_rate || 0) * 100)}%`} detail="30 day rhythm" /><Metric label="Spend this month" value={money(data.features.spend_30d || 0)} detail="Across your essentials" /><Metric label="Payments watched" value={`${data.transactions.length}`} detail="Recent activity" /></div><div className="card" style={{ marginTop: 18, padding: 22 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><div><p style={{ color: "var(--teal)", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em" }}>Made for this moment</p><h2 className="display" style={{ fontSize: 28, margin: "8px 0" }}>{data.offers[0]?.product_code?.replace("_", " ") || "Your next good move"}</h2><p style={{ color: "var(--muted)", maxWidth: 480 }}>{data.offers[0]?.reason || "Keep exploring your account to discover useful support."}</p></div><span style={{ padding: 14, color: "var(--gold)", background: "#fbf2df", borderRadius: "50%" }}><IndianRupee size={25} /></span></div><button style={{ marginTop: 14, padding: "10px 0", border: 0, borderBottom: "1px solid var(--teal)", background: "transparent", color: "var(--teal)", fontWeight: 700 }}>See the details <ChevronRight size={16} style={{ verticalAlign: "middle" }} /></button></div><h3 style={{ margin: "32px 0 12px", fontSize: 16 }}>Recent activity</h3>{data.transactions.slice(0, 5).map(txn => <div key={txn.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "15px 0", borderBottom: "1px solid var(--line)" }}><div style={{ display: "flex", alignItems: "center", gap: 12 }}><span style={{ width: 34, height: 34, display: "grid", placeItems: "center", borderRadius: 8, background: txn.status === "blocked" ? "#fbe8e6" : "#e6f1eb", color: txn.status === "blocked" ? "#b34d4d" : "var(--teal)" }}>{txn.status === "blocked" ? <LockKeyhole size={16} /> : <ArrowUpRight size={16} />}</span><div><strong style={{ fontSize: 14 }}>{txn.payee}</strong><div style={{ color: "var(--muted)", fontSize: 12, marginTop: 3 }}>{txn.category.replace("_", " ")} · {txn.status}</div></div></div><strong style={{ color: txn.direction === "credit" ? "var(--teal)" : "var(--ink)" }}>{txn.direction === "credit" ? "+" : "-"}{money(txn.amount)}</strong></div>)}</div> }
-const choiceButton = { flex: 1, padding: "12px 14px", border: "1px solid var(--line)", borderRadius: 8, background: "white", color: "var(--muted)", cursor: "pointer" };
-const selectedChoice = { borderColor: "var(--teal)", color: "var(--teal)", background: "#e9f3ee", fontWeight: 700 };
-function Metric({ label, value, detail }: { label: string; value: string; detail: string }) { return <div className="card" style={{ padding: 18 }}><p style={{ color: "var(--muted)", fontSize: 12, margin: 0 }}>{label}</p><strong className="display" style={{ display: "block", fontSize: 25, marginTop: 12 }}>{value}</strong><span style={{ color: "var(--muted)", fontSize: 11 }}>{detail}</span></div> }
-function Alerts({ data }: { data: Dashboard }) { return <div className="fade-up" style={{ marginTop: 28 }}>{data.alerts.length ? data.alerts.map(alert => <div className="card" key={alert.id} style={{ padding: 20, marginBottom: 12, borderLeft: `4px solid ${alert.type === "fraud" ? "#b34d4d" : alert.type === "stress" ? "var(--gold)" : "var(--teal)"}` }}><strong>{alert.type.toUpperCase()}</strong><p style={{ color: "var(--muted)", lineHeight: 1.5 }}>{alert.message_en}</p></div>) : <p style={{ color: "var(--muted)" }}>All clear. We will surface anything important here.</p>}</div> }
-function Conversation({ chat, reply, ask }: { chat: string; reply: string; ask: (message: string) => void }) { return <div className="fade-up" style={{ marginTop: 28 }}><div className="card" style={{ padding: 24, minHeight: 280 }}><p style={{ color: "var(--teal)", fontWeight: 700 }}>Arth-AI assistant</p><h2 className="display" style={{ fontSize: 28 }}>A little clarity goes a long way.</h2>{chat && <p style={{ textAlign: "right", color: "var(--teal)" }}>{chat}</p>}{reply && <p style={{ background: "#eef4ef", padding: 14, borderRadius: 8, lineHeight: 1.5 }}>{reply}</p>}<div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 30 }}>{["What is my balance?", "Show my offers", "I need grace"].map(item => <button key={item} onClick={() => ask(item)} style={{ border: "1px solid var(--line)", borderRadius: 999, background: "white", padding: "9px 13px", color: "var(--ink)", cursor: "pointer" }}>{item}</button>)}</div></div></div> }
-function Explain({ data }: { data: Dashboard }) { return <div className="fade-up" style={{ marginTop: 28 }}><div className="card" style={{ padding: 24 }}><p style={{ color: "var(--teal)", fontWeight: 700, fontSize: 12, textTransform: "uppercase" }}>Auditor view</p><h2 className="display" style={{ fontSize: 30 }}>Why Arth-AI chose this path</h2><p style={{ color: "var(--muted)", lineHeight: 1.6 }}>The system combines rolling behavior, transaction context, and hard safety rules. The assistant cannot override this gate.</p><div style={{ marginTop: 24 }}>{[["Behavioral segment", data.segment], ["Stress flag", data.stress_flag ? "Active: credit paused" : "Clear"], ["Ethics decision", data.stress_flag ? "Grace support only" : "Relevant offers allowed"]].map(([label, value]) => <div key={label} style={{ display: "flex", justifyContent: "space-between", gap: 20, padding: "14px 0", borderBottom: "1px solid var(--line)" }}><span style={{ color: "var(--muted)" }}>{label}</span><strong>{value}</strong></div>)}</div></div></div> }
-function Simulator({ onComplete }: { onComplete: () => void }) { const [form, setForm] = useState({ amount: "48000", payee: "New city transfer", lat: "28.61", lng: "77.20", device_id: "new-device", ts: "" }); const [result, setResult] = useState<{ status: string; fraud_score: number; category: string } | null>(null); const [error, setError] = useState(""); const update = (key: keyof typeof form, value: string) => setForm(current => ({ ...current, [key]: value })); const submit = async () => { try { setError(""); const response = await api<{ status: string; fraud_score: number; category: string }>("/admin/simulate-txn", { method: "POST", body: JSON.stringify({ amount: Number(form.amount), direction: "debit", payee: form.payee, lat: Number(form.lat), lng: Number(form.lng), device_id: form.device_id, ...(form.ts ? { ts: new Date(form.ts).toISOString() } : {}) }) }); setResult(response); onComplete(); } catch (err) { setError(err instanceof Error ? err.message : "Simulation failed"); } }; return <div className="fade-up" style={{ marginTop: 28 }}><div className="card" style={{ padding: 24 }}><p style={{ color: "var(--teal)", fontWeight: 700, fontSize: 12, textTransform: "uppercase" }}>Live demo injector</p><h2 className="display" style={{ fontSize: 30 }}>Test the safety engine</h2><p style={{ color: "var(--muted)", lineHeight: 1.5 }}>Inject a UPI-like debit and watch the server explain whether it posts or blocks.</p><div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginTop: 22 }}>{([["amount", "Amount (INR)"], ["payee", "Payee"], ["lat", "Latitude"], ["lng", "Longitude"], ["device_id", "Device ID"], ["ts", "Time (optional)"]] as const).map(([key, label]) => <label key={key} style={{ fontSize: 12, fontWeight: 700 }}>{label}<input type={key === "ts" ? "datetime-local" : key === "amount" || key === "lat" || key === "lng" ? "number" : "text"} value={form[key]} onChange={event => update(key, event.target.value)} style={inputStyle} /></label>)}</div>{error && <p style={{ color: "#b34d4d" }}>{error}</p>}<button onClick={submit} style={{ ...primaryButton, marginTop: 22 }}>Run simulation <Zap size={17} /></button>{result && <div style={{ marginTop: 22, padding: 16, borderRadius: 8, background: result.status === "blocked" ? "#fbe8e6" : "#e6f1eb" }}><strong>{result.status.toUpperCase()}</strong><p style={{ marginBottom: 0 }}>Fraud score {result.fraud_score} · {result.category.replace("_", " ")}</p></div>}</div></div> }
-
-export default function Page() { return <App />; }
+export default function Page() {
+  return <App />;
+}
