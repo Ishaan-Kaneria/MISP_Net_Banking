@@ -16,14 +16,16 @@ from sklearn.model_selection import train_test_split
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.ml.segment import SEGMENTS
+from app.ml.segment import SEGMENT_FEATURES, SEGMENTS
 
 SEED = 20260912
 ROOT = Path(__file__).resolve().parents[1]
 MODEL_DIR = ROOT / "app" / "ml" / "models"
 REPORT_DIR = ROOT / "data" / "synthetic" / "reports"
 FRAUD_FEATURES = ("amount", "log_amount", "hour", "is_night", "km_from_last", "same_device", "velocity_2m", "amount_vs_typical", "balance_ratio", "is_new_payee", "payee_frequency_30d", "risk_interaction")
-SEGMENT_FEATURES = ("spend_30d", "savings_rate", "missed_emi", "hospital_spend", "unique_payees", "salary_amount", "velocity", "entertainment_spend")
+# SEGMENT_FEATURES itself now lives in app.ml.segment, imported above, so it's
+# one column order shared by training and inference instead of two copies
+# that can silently drift apart -- see predict_segment's "Known fix" note.
 
 
 def fraud_frame(size: int = 24000) -> tuple[np.ndarray, np.ndarray, np.ndarray]:

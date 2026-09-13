@@ -4,6 +4,14 @@ from pathlib import Path
 
 SEGMENTS = ("FIRST_JOB", "MARRIAGE", "MEDICAL", "STRESS", "SAVER", "HIGH_VELOCITY", "BASELINE")
 
+# Single source of truth for the trained classifier's input layout. Both
+# `scripts/train_models.py::segment_frame` (which fits and saves
+# life_stage_classifier.joblib) and `predict_segment` below build their
+# feature vector by looking up this same tuple of names, instead of each
+# hardcoding its own column order -- see the "Known fix" note on
+# `predict_segment` for why that used to silently break.
+SEGMENT_FEATURES = ("spend_30d", "savings_rate", "missed_emi", "hospital_spend", "unique_payees", "salary_amount", "velocity", "entertainment_spend")
+
 try:
     from xgboost import XGBClassifier
 except ImportError:  # Keep local fallback mode usable before optional ML install.
@@ -44,8 +52,26 @@ elif XGBClassifier is not None:
 
 def predict_segment(*, spend_30d: float, savings_rate: float, missed_emi: int, hospital_spend: float,
                     unique_payees: int, salary_amount: float, velocity: int, entertainment_spend: float) -> str:
-    vector = np.array([[spend_30d / 50000, savings_rate, missed_emi, hospital_spend / 20000,
-                        salary_amount / 50000, entertainment_spend / 20000, velocity / 20, unique_payees / 20]], dtype=float)
+    # Known fix (2026-09): this used to build the vector as a hardcoded list
+    # literal in a different column order than `segment_frame` trains on
+    # (salary/entertainment/unique_payees were in the wrong slots) -- the
+    # saved life_stage_classifier.joblib was silently scored on scrambled
+    # features for every profile that reaches it (anything past the
+    # deterministic STRESS/MEDICAL/HIGH_VELOCITY/SAVER guards below, i.e.
+    # every FIRST_JOB/MARRIAGE/BASELINE call). Building it from the same
+    # named `SEGMENT_FEATURES` tuple the trainer uses makes the two
+    # structurally impossible to drift apart again.
+    normalized = {
+        "spend_30d": spend_30d / 50000,
+        "savings_rate": savings_rate,
+        "missed_emi": missed_emi,
+        "hospital_spend": hospital_spend / 20000,
+        "unique_payees": unique_payees / 20,
+        "salary_amount": salary_amount / 50000,
+        "velocity": velocity / 20,
+        "entertainment_spend": entertainment_spend / 20000,
+    }
+    vector = np.array([[normalized[name] for name in SEGMENT_FEATURES]], dtype=float)
     # Strong safety and behavior signals take precedence over a probabilistic class.
     if missed_emi or savings_rate < -0.15:
         return "STRESS"
