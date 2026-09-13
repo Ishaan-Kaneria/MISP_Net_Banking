@@ -131,6 +131,12 @@ function App() {
   const copy = copyFor(language);
   if (dashboard.user.kyc_status !== "verified") return <Kyc onComplete={load} />;
 
+  // Was a hardcoded "12 September 2026" that never advanced past the day
+  // this screen was first built and never matched the visitor's own
+  // language either -- a real date, formatted in the selected language's
+  // Indian locale, instead of a frozen, English-only placeholder.
+  const todayLabel = new Intl.DateTimeFormat(`${language}-IN`, { day: "numeric", month: "long", year: "numeric" }).format(new Date());
+
   const navWithText = NAV.map(item => ({ ...item, text: item.label === "Overview" ? copy.overview : item.label === "Conversation" ? copy.conversation : item.label === "Explain" ? copy.explain : copy.simulator }));
   const viewLabel = navWithText.find(item => item.label === view)?.text ?? view;
 
@@ -164,7 +170,7 @@ function App() {
       <Sidebar
         name={dashboard.user.name} segment={dashboard.segment} view={view} onNavigate={navigate}
         onSignOut={() => { localStorage.removeItem("mispbank_token"); location.reload(); }}
-        nav={navWithText}
+        nav={navWithText} copy={copy}
       />
 
       <section className="min-w-0 bg-paper">
@@ -177,7 +183,7 @@ function App() {
             <div>
               {view !== "Overview" && (
                 <button onClick={() => navigate("Overview")} className="mb-3.5 inline-flex items-center gap-1.5 border-0 bg-transparent text-xs font-bold text-primary hover:underline">
-                  <ArrowLeft size={15} /> Back to overview
+                  <ArrowLeft size={15} /> {copy.backToOverview}
                 </button>
               )}
               <p className="text-[11px] font-bold uppercase tracking-widest text-primary">{copy.personal.toUpperCase()}</p>
@@ -185,23 +191,23 @@ function App() {
                 {view === "Overview" ? `${copy.morning}, ${dashboard.user.name.split(" ")[0]}` : viewLabel}
               </h1>
               <p className="max-w-xl leading-relaxed text-muted">
-                {view === "Overview" ? copy.summary : "Use the navigation or your browser back button to return to your account overview."}
+                {view === "Overview" ? copy.summary : copy.overviewHint}
               </p>
             </div>
-            <span className="hidden whitespace-nowrap text-xs text-muted sm:inline">12 September 2026</span>
+            <span className="hidden whitespace-nowrap text-xs text-muted sm:inline">{todayLabel}</span>
           </div>
 
           {view === "Overview" && <Overview data={dashboard} copy={copy} onDetails={() => navigate("Offers")} onAddMoney={() => setShowAddMoney(true)} onNavigate={navigate} />}
           {view === "Offers" && <Offers data={dashboard} copy={copy} />}
           {view === "Conversation" && <Conversation chat={chat} reply={reply} ask={ask} language={language} setLanguage={setLanguage} copy={copy} />}
-          {view === "Explain" && <Explain data={dashboard} />}
-          {view === "Simulator" && <Simulator balance={dashboard.balance} deviceId={dashboard.user.device_id} onComplete={refresh} />}
+          {view === "Explain" && <Explain data={dashboard} copy={copy} language={language} />}
+          {view === "Simulator" && <Simulator balance={dashboard.balance} deviceId={dashboard.user.device_id} copy={copy} onComplete={refresh} />}
         </div>
       </section>
 
       <aside className="hidden flex-col gap-3.5 bg-paper px-5.5 pb-16 pt-10 lg:flex">
         <RailAccount data={dashboard} copy={copy} />
-        <RailAlerts data={dashboard} copy={copy} />
+        <RailAlerts data={dashboard} copy={copy} language={language} />
         <RailOffers data={dashboard} copy={copy} />
         <RailActivity data={dashboard} copy={copy} />
       </aside>

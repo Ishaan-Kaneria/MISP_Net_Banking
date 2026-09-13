@@ -22,13 +22,13 @@ export function Overview({
           </p>
         </div>
         <div className="border-t border-white/20 pt-3 md:border-l md:border-t-0 md:pl-5 md:pt-0">
-          <span className="block text-[10px] text-[#a3bcdd]">PRIMARY SAVINGS</span>
+          <span className="block text-[10px] uppercase text-[#a3bcdd]">{copy.primarySavings}</span>
           <strong className="my-1.5 block text-sm tracking-wide">•••• 0001</strong>
-          <small className="block text-[10px] text-[#a3bcdd]">Last updated just now</small>
+          <small className="block text-[10px] text-[#a3bcdd]">{copy.lastUpdatedNow}</small>
         </div>
         <div className="flex flex-col gap-2">
           <button onClick={onAddMoney} className="flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-[#6fa6ea] px-3 py-2.5 text-[11px] text-white hover:bg-white/10">
-            <IndianRupee size={16} /> Add money
+            <IndianRupee size={16} /> {copy.addMoney}
           </button>
           <button onClick={() => onNavigate("Simulator")} className="flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-[#6fa6ea] px-3 py-2.5 text-[11px] text-white hover:bg-white/10">
             <ArrowUpRight size={16} /> {copy.simulator}
@@ -50,12 +50,12 @@ export function Overview({
         ))}
       </div>
 
-      <Card className="mt-6 p-5.5 p-[22px]">
+      <Card className="mt-6 p-[22px]">
         <div className="flex items-center justify-between">
           <div>
-            <p className="m-0 text-xs font-bold uppercase tracking-widest text-primary">Made for this moment</p>
-            <h2 className="my-2 text-[28px] font-bold">{data.offers[0]?.product_code?.replaceAll("_", " ") || "Your next good move"}</h2>
-            <p className="max-w-md text-muted">{data.offers[0]?.reason || "Keep exploring your account to discover useful support."}</p>
+            <p className="m-0 text-xs font-bold uppercase tracking-widest text-primary">{copy.madeForThisMoment}</p>
+            <h2 className="my-2 text-[28px] font-bold">{data.offers[0]?.product_code?.replaceAll("_", " ") || copy.nextGoodMove}</h2>
+            <p className="max-w-md text-muted">{data.offers[0]?.reason || copy.exploreForSupport}</p>
           </div>
           <span className="rounded-full bg-gold-light p-3.5 text-gold"><IndianRupee size={25} /></span>
         </div>

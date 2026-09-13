@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AlertCircle, Bell, CheckCircle2 } from "lucide-react";
-import type { Dashboard } from "../../lib/types";
+import type { Dashboard, Language } from "../../lib/types";
+import { alertMessage } from "../../lib/types";
+import type { TranslationCopy } from "../../lib/translations";
 
 const SEEN_KEY = "mispbank_seen_alerts";
 
@@ -25,7 +27,7 @@ function readSeen(): Set<string> {
  * new since you last opened it — the same behavior as a real app's
  * notification bell, not a static dot that's either on or off.
  */
-export function NotificationBell({ alerts }: { alerts: Dashboard["alerts"] }) {
+export function NotificationBell({ alerts, copy, language }: { alerts: Dashboard["alerts"]; copy: TranslationCopy; language: Language }) {
   const [open, setOpen] = useState(false);
   const [seen, setSeen] = useState<Set<string>>(new Set());
   const containerRef = useRef<HTMLDivElement>(null);
@@ -70,10 +72,10 @@ export function NotificationBell({ alerts }: { alerts: Dashboard["alerts"] }) {
       </button>
       {open && (
         <div className="absolute right-0 top-full z-20 mt-2 w-80 max-w-[calc(100vw-32px)] animate-pop-in rounded-lg border border-border bg-white shadow-pop">
-          <div className="border-b border-border px-4 py-3 text-xs font-bold uppercase tracking-wide text-muted">Notifications</div>
+          <div className="border-b border-border px-4 py-3 text-xs font-bold uppercase tracking-wide text-muted">{copy.notifications}</div>
           <div className="max-h-80 overflow-y-auto scrollbar-thin">
             {alerts.length === 0 && (
-              <div className="flex items-center gap-2 px-4 py-6 text-sm text-muted"><CheckCircle2 size={16} /> No active alerts. Your account is clear.</div>
+              <div className="flex items-center gap-2 px-4 py-6 text-sm text-muted"><CheckCircle2 size={16} /> {copy.noAlerts}</div>
             )}
             {alerts.map(alert => (
               <div key={alert.id} className="flex items-start gap-2.5 border-b border-border px-4 py-3 last:border-b-0">
@@ -81,8 +83,8 @@ export function NotificationBell({ alerts }: { alerts: Dashboard["alerts"] }) {
                   <AlertCircle size={13} />
                 </span>
                 <div className="min-w-0">
-                  <strong className="block text-xs text-navy">{alert.type === "fraud" ? "Payment protection" : "Cash-flow support"}</strong>
-                  <p className="mt-1 text-xs leading-relaxed text-muted">{alert.message_en}</p>
+                  <strong className="block text-xs text-navy">{alert.type === "fraud" ? copy.paymentProtection : copy.cashFlowSupport}</strong>
+                  <p className="mt-1 text-xs leading-relaxed text-muted">{alertMessage(alert, language)}</p>
                 </div>
               </div>
             ))}

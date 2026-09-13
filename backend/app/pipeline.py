@@ -186,14 +186,14 @@ def run_pipeline(db: Session, user_id: str, payload, *, force_post: bool = False
             existing_offers[code] = created
     alert_ids = []
     if status == "blocked":
-        alert = Alert(user_id=user_id, type="fraud", message_hi="यह भुगतान सुरक्षा कारणों से रोक दिया गया है।", message_en="This payment was blocked for your protection.")
+        alert = Alert(user_id=user_id, type="fraud", message_hi="यह भुगतान सुरक्षा कारणों से रोक दिया गया है।", message_en="This payment was blocked for your protection.", message_gu="આ ચુકવણી સુરક્ષા કારણોસર રોકવામાં આવી છે.")
         db.add(alert)
         db.flush()
         alert_ids.append(alert.id)
     if stress:
         has_stress_alert = db.scalar(select(Alert.id).where(Alert.user_id == user_id, Alert.type == "stress"))
         if not has_stress_alert:
-            db.add(Alert(user_id=user_id, type="stress", message_hi="आपकी नकदी सुरक्षित रखना हमारी प्राथमिकता है।", message_en="Your cash flow comes first. Grace support is available."))
+            db.add(Alert(user_id=user_id, type="stress", message_hi="आपकी नकदी सुरक्षित रखना हमारी प्राथमिकता है।", message_en="Your cash flow comes first. Grace support is available.", message_gu="તમારો રોકડ પ્રવાહ સુરક્ષિત રાખવો એ અમારી પ્રાથમિકતા છે. ગ્રેસ સહાય ઉપલબ્ધ છે."))
     db.add(AuditLog(user_id=user_id, transaction_id=transaction.id, action="txn_score", features={"km_from_last": km, "is_night": is_night, "fraud_score": fraud_score, "amount_vs_typical": round(amount_vs_typical, 3), "balance_ratio": round(balance_ratio, 3), "is_new_payee": is_new_payee, "payee_frequency_30d": payee_frequency_30d, "risk_interaction": round(amount_vs_typical * balance_ratio * int(is_new_payee), 3)}, reasons=hard_reasons))
     db.commit()
     db.refresh(transaction)

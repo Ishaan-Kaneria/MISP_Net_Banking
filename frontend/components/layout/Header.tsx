@@ -33,7 +33,7 @@ export function Header({
           ))}
         </div>
         <span className="h-6 w-px bg-border" />
-        <NotificationBell alerts={alerts} />
+        <NotificationBell alerts={alerts} copy={copy} language={language} />
       </div>
     </header>
   );

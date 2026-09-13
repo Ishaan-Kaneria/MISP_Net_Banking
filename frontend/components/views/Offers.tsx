@@ -16,9 +16,9 @@ export function Offers({ data, copy }: { data: Dashboard; copy: TranslationCopy 
       setError("");
       setSubmitting(id);
       const result = await api<{ accepted: boolean; message?: string; reason?: string }>(`/offers/${id}/accept`, { method: "POST" });
-      setAccepted(result.accepted ? result.message || "Your support request has been recorded." : result.reason || "This offer is paused for your protection.");
+      setAccepted(result.accepted ? result.message || copy.requestRecorded : result.reason || copy.offerPaused);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "We could not record your request. Please try again.");
+      setError(err instanceof ApiError ? err.message : copy.requestFailed);
     } finally {
       setSubmitting(null);
     }
@@ -38,10 +38,10 @@ export function Offers({ data, copy }: { data: Dashboard; copy: TranslationCopy 
             </div>
             <p className="leading-relaxed text-muted">{offer.reason}</p>
             <Button variant="outline" disabled={offer.blocked_by_ethics || submitting === offer.id} onClick={() => void accept(offer.id)} className="px-3.5 py-2.5">
-              {offer.blocked_by_ethics ? copy.paused : submitting === offer.id ? "Recording..." : copy.request}
+              {offer.blocked_by_ethics ? copy.paused : submitting === offer.id ? copy.recording : copy.request}
             </Button>
           </div>
-        )) : <p className="text-muted">No recommendations yet. Your next safe move will appear here.</p>}
+        )) : <p className="text-muted">{copy.noOffersYet}</p>}
         {accepted && <p role="status" className="mt-4.5 font-bold text-primary">{accepted}</p>}
         {error && <p role="alert" className="mt-4.5 font-bold text-danger">{error}</p>}
       </Card>

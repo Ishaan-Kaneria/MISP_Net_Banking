@@ -4,17 +4,20 @@ import { useState } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { api, ApiError } from "../../lib/api";
 import { money } from "../../lib/types";
+import type { TranslationCopy } from "../../lib/translations";
 import { Button, Card } from "../ui";
 import { StepUpModal } from "../modals/StepUpModal";
 
+// Field labels are looked up from `copy` by key at render time (see FIELDS
+// below) so they translate with everything else in this view.
 const FIELDS = [
-  ["amount", "Amount (INR)"],
-  ["payee", "Payee"],
-  ["lat", "Latitude"],
-  ["lng", "Longitude"],
-  ["device_id", "Device ID"],
-  ["ts", "Time (optional)"],
-] as const;
+  ["amount", "amountField"],
+  ["payee", "payeeField"],
+  ["lat", "latitudeField"],
+  ["lng", "longitudeField"],
+  ["device_id", "deviceIdField"],
+  ["ts", "timeOptionalField"],
+] as const satisfies ReadonlyArray<readonly [string, keyof TranslationCopy]>;
 
 // Plain-language explanations for the hard fraud rules (app/rules.py) so a
 // block is never a mystery flat "0.86" score -- the rule that actually
@@ -22,16 +25,18 @@ const FIELDS = [
 // amount by design (rapid repeated small debits are the classic
 // "card-testing" fraud pattern), so testing the simulator quickly, several
 // times in a row, is the single most common way to see this one trip.
-const RULE_EXPLANATIONS: Record<string, string> = {
-  WATCHLIST_PAYEE: "This payee is on a watchlist, in either direction.",
-  GEO_JUMP_HIGH_VALUE: "A large amount right after an impossible jump in location.",
-  VELOCITY_5_DEBITS_2M: "5 or more debits within 2 minutes — this applies at any amount, since rapid repeated attempts (not the amount) are the real signal, the same pattern used to test whether a stolen card works.",
-  NEW_DEVICE_HIGH_VALUE: "A large amount from a device this account hasn't used before.",
-  NIGHT_HIGH_VALUE: "A large amount during late-night hours.",
-  INSUFFICIENT_BALANCE: "The account doesn't have enough balance to cover this debit.",
+// Keyed to translation-copy keys, not literal strings, so this translates
+// with the rest of the view instead of always reading in English.
+const RULE_EXPLANATION_KEYS: Record<string, keyof TranslationCopy> = {
+  WATCHLIST_PAYEE: "ruleWatchlistPayee",
+  GEO_JUMP_HIGH_VALUE: "ruleGeoJumpHighValue",
+  VELOCITY_5_DEBITS_2M: "ruleVelocity5Debits2m",
+  NEW_DEVICE_HIGH_VALUE: "ruleNewDeviceHighValue",
+  NIGHT_HIGH_VALUE: "ruleNightHighValue",
+  INSUFFICIENT_BALANCE: "ruleInsufficientBalance",
 };
 
-export function Simulator({ balance, deviceId, onComplete }: { balance: number; deviceId: string | null; onComplete: () => void }) {
+export function Simulator({ balance, deviceId, copy, onComplete }: { balance: number; deviceId: string | null; copy: TranslationCopy; onComplete: () => void }) {
   // Defaults to a realistic, low-risk payment on the account's own
   // registered device, so the very first run actually posts and visibly
   // debits the balance -- a real money-transfer feel -- rather than the
@@ -76,7 +81,7 @@ export function Simulator({ balance, deviceId, onComplete }: { balance: number; 
       setShowStepUp(false);
       onComplete();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Simulation failed");
+      setError(err instanceof ApiError ? err.message : copy.simulationFailed);
     } finally {
       setRunning(false);
     }
@@ -92,16 +97,16 @@ export function Simulator({ balance, deviceId, onComplete }: { balance: number; 
         />
       )}
       <Card className="p-6">
-        <p className="text-xs font-bold uppercase tracking-wide text-primary">Live demo injector</p>
-        <h2 className="text-[30px] font-bold">Test the safety engine</h2>
-        <p className="leading-relaxed text-muted">Inject a UPI-like debit and watch the server explain whether it posts or blocks — a posted debit really moves money out of your balance below, just like a real payment. You'll confirm with a one-time code first.</p>
+        <p className="text-xs font-bold uppercase tracking-wide text-primary">{copy.liveDemoInjector}</p>
+        <h2 className="text-[30px] font-bold">{copy.simulatorTitle}</h2>
+        <p className="leading-relaxed text-muted">{copy.simulatorIntro}</p>
         <div className="mt-4 flex flex-wrap gap-2">
-          <button onClick={() => applyPreset("normal")} className="rounded-full border border-border bg-white px-3.5 py-2 text-xs font-semibold text-ink hover:bg-paper">Everyday payment (posts)</button>
-          <button onClick={() => applyPreset("risky")} className="rounded-full border border-border bg-white px-3.5 py-2 text-xs font-semibold text-ink hover:bg-paper">Risky transfer (blocked)</button>
+          <button onClick={() => applyPreset("normal")} className="rounded-full border border-border bg-white px-3.5 py-2 text-xs font-semibold text-ink hover:bg-paper">{copy.everydayPaymentPreset}</button>
+          <button onClick={() => applyPreset("risky")} className="rounded-full border border-border bg-white px-3.5 py-2 text-xs font-semibold text-ink hover:bg-paper">{copy.riskyTransferPreset}</button>
         </div>
         <div className="mt-5.5 grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
-          {FIELDS.map(([key, label]) => (
-            <label key={key} className="text-xs font-bold">{label}
+          {FIELDS.map(([key, labelKey]) => (
+            <label key={key} className="text-xs font-bold">{copy[labelKey]}
               <input
                 type={key === "ts" ? "datetime-local" : key === "amount" || key === "lat" || key === "lng" ? "number" : "text"}
                 value={form[key]} onChange={event => update(key, event.target.value)}
@@ -113,15 +118,15 @@ export function Simulator({ balance, deviceId, onComplete }: { balance: number; 
         {error && <p className="mt-4 text-danger">{error}</p>}
         {result && (
           <div className={`mt-4.5 rounded-lg p-4 ${result.status === "posted" ? "bg-success-light" : "bg-danger-light"}`}>
-            <p className="m-0 font-bold">{result.status === "posted" ? `− ${money(submittedAmount ?? 0)} debited` : "Blocked — no money moved"}</p>
-            <p className="mt-1 text-sm text-muted">{result.status === "posted" ? `New balance: ${money(balance)}` : "Your balance is protected until this is confirmed safe."}</p>
-            <p className="mt-2 text-xs text-muted">Fraud score {result.fraud_score} · Category {result.category}</p>
+            <p className="m-0 font-bold">{result.status === "posted" ? `− ${money(submittedAmount ?? 0)} ${copy.debited}` : copy.blockedNoMoney}</p>
+            <p className="mt-1 text-sm text-muted">{result.status === "posted" ? `${copy.newBalance}: ${money(balance)}` : copy.balanceProtected}</p>
+            <p className="mt-2 text-xs text-muted">{copy.fraudScoreLabel} {result.fraud_score} · {copy.categoryLabel} {result.category}</p>
             {result.fired_rules.length > 0 && (
               <div className="mt-3 border-t border-black/10 pt-3">
-                <p className="m-0 text-xs font-bold uppercase tracking-wide text-muted">Why</p>
+                <p className="m-0 text-xs font-bold uppercase tracking-wide text-muted">{copy.whyLabel}</p>
                 {result.fired_rules.map(rule => (
                   <p key={rule} className="mt-1.5 text-xs leading-relaxed text-ink">
-                    <strong className="font-mono">{rule}</strong> — {RULE_EXPLANATIONS[rule] || "A hard safety rule fired for this transaction."}
+                    <strong className="font-mono">{rule}</strong> — {copy[RULE_EXPLANATION_KEYS[rule]] || copy.ruleDefault}
                   </p>
                 ))}
               </div>
@@ -129,7 +134,7 @@ export function Simulator({ balance, deviceId, onComplete }: { balance: number; 
           </div>
         )}
         <Button onClick={() => setShowStepUp(true)} className="mt-5">
-          Run safety check <ArrowUpRight size={18} />
+          {copy.runCheck} <ArrowUpRight size={18} />
         </Button>
       </Card>
     </div>

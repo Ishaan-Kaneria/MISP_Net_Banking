@@ -2,11 +2,12 @@
 
 import { ChevronRight, type LucideIcon } from "lucide-react";
 import type { View } from "../../lib/types";
+import type { TranslationCopy } from "../../lib/translations";
 
 export function Sidebar({
-  name, segment, view, nav, onNavigate, onSignOut,
+  name, segment, view, nav, onNavigate, onSignOut, copy,
 }: {
-  name: string; segment: string; view: View; onNavigate: (view: View) => void; onSignOut: () => void;
+  name: string; segment: string; view: View; onNavigate: (view: View) => void; onSignOut: () => void; copy: TranslationCopy;
   nav: Array<{ label: View; text: string; icon: LucideIcon }>;
 }) {
   return (
@@ -44,7 +45,7 @@ export function Sidebar({
           same thing. It now lives once, in the header, so this footer is
           just account-level actions. */}
       <button onClick={onSignOut} className="mt-auto w-full rounded-md border-t border-white/10 px-2.5 pb-1 pt-3.5 text-left text-xs text-[#a6bad4] hover:bg-white/10 hover:text-white max-md:hidden">
-        Sign out
+        {copy.signOut}
       </button>
     </aside>
   );

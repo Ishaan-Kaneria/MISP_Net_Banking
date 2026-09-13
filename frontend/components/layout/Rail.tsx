@@ -1,8 +1,8 @@
 "use client";
 
 import { AlertCircle, CheckCircle2, Clock3, IndianRupee, TrendingUp } from "lucide-react";
-import type { Dashboard } from "../../lib/types";
-import { money } from "../../lib/types";
+import type { Dashboard, Language } from "../../lib/types";
+import { alertMessage, money } from "../../lib/types";
 import { computeAccountHealth } from "../../lib/health";
 import type { TranslationCopy } from "../../lib/translations";
 
@@ -29,7 +29,7 @@ function RailSection({ title, icon, accent, children }: { title: string; icon: R
   );
 }
 
-export function RailAlerts({ data, copy }: { data: Dashboard; copy: TranslationCopy }) {
+export function RailAlerts({ data, copy, language }: { data: Dashboard; copy: TranslationCopy; language: Language }) {
   return (
     <RailSection title={copy.alerts} icon={<AlertCircle size={13} />} accent="gold">
       {data.alerts.length ? data.alerts.slice(0, 3).map(alert => (
@@ -38,8 +38,8 @@ export function RailAlerts({ data, copy }: { data: Dashboard; copy: TranslationC
             <AlertCircle size={15} />
           </span>
           <div>
-            <strong className="block text-xs text-navy">{alert.type === "fraud" ? "Payment protection" : "Cash-flow support"}</strong>
-            <p className="mt-1 text-[11px] leading-relaxed text-muted">{alert.message_en}</p>
+            <strong className="block text-xs text-navy">{alert.type === "fraud" ? copy.paymentProtection : copy.cashFlowSupport}</strong>
+            <p className="mt-1 text-[11px] leading-relaxed text-muted">{alertMessage(alert, language)}</p>
           </div>
         </div>
       )) : (
@@ -57,11 +57,11 @@ export function RailOffers({ data, copy }: { data: Dashboard; copy: TranslationC
           <span className="grid h-7 w-7 flex-none place-items-center rounded-md bg-primary-light text-primary"><IndianRupee size={15} /></span>
           <span className="min-w-0 flex-1">
             <strong className="block text-xs text-navy">{offer.product_code.replaceAll("_", " ")}</strong>
-            <small className="mt-1 block truncate text-[10px] text-muted">{offer.blocked_by_ethics ? "Paused by safety rules" : offer.reason}</small>
+            <small className="mt-1 block truncate text-[10px] text-muted">{offer.blocked_by_ethics ? copy.pausedBySafety : offer.reason}</small>
           </span>
         </div>
       )) : (
-        <div className="flex items-center gap-2 pb-0.5 pt-3 text-[11px] leading-relaxed text-muted"><Clock3 size={17} /><span>Recommendations will appear as your account evolves.</span></div>
+        <div className="flex items-center gap-2 pb-0.5 pt-3 text-[11px] leading-relaxed text-muted"><Clock3 size={17} /><span>{copy.offersWillAppear}</span></div>
       )}
     </RailSection>
   );

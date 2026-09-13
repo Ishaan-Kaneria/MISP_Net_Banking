@@ -34,6 +34,13 @@ def startup() -> None:
     seed()
 
 
+def serialize_alert(alert: Alert) -> dict:
+    # message_gu falls back to message_en (never message_hi -- the two are
+    # unrelated languages) for alerts created before that column existed,
+    # so every consumer gets a usable Gujarati-slot string instead of null.
+    return {"id": alert.id, "type": alert.type, "message_en": alert.message_en, "message_hi": alert.message_hi, "message_gu": alert.message_gu or alert.message_en}
+
+
 def unique_by_key(items: list, key: str) -> list:
     seen: set[str] = set()
     unique: list = []
@@ -162,13 +169,13 @@ def dashboard(authorization: str | None = Header(default=None), db: Session = De
         "unique_payees_7d": feature.unique_payees_7d if feature else 0,
         "missed_emi_30d": feature.missed_emi_30d if feature else 0,
     }
-    return {"user": {"id": user.id, "name": user.name, "lang": user.lang, "kyc_status": user.kyc_status, "device_id": user.device_id}, "balance": float(account.balance if account else 0), "segment": score.segment if score else "BASELINE", "stress_flag": score.stress_flag if score else False, "features": feature_payload, "transactions": [{"id": t.id, "amount": float(t.amount), "direction": t.direction, "payee": t.payee, "category": t.category, "status": t.status, "fraud_score": t.fraud_score, "ts": t.ts.isoformat()} for t in txns], "offers": [{"id": x.id, "product_code": x.product_code, "reason": x.reason, "blocked_by_ethics": x.blocked_by_ethics} for x in offers], "alerts": [{"id": x.id, "type": x.type, "message_en": x.message_en, "message_hi": x.message_hi} for x in alerts]}
+    return {"user": {"id": user.id, "name": user.name, "lang": user.lang, "kyc_status": user.kyc_status, "device_id": user.device_id}, "balance": float(account.balance if account else 0), "segment": score.segment if score else "BASELINE", "stress_flag": score.stress_flag if score else False, "features": feature_payload, "transactions": [{"id": t.id, "amount": float(t.amount), "direction": t.direction, "payee": t.payee, "category": t.category, "status": t.status, "fraud_score": t.fraud_score, "ts": t.ts.isoformat()} for t in txns], "offers": [{"id": x.id, "product_code": x.product_code, "reason": x.reason, "blocked_by_ethics": x.blocked_by_ethics} for x in offers], "alerts": [serialize_alert(x) for x in alerts]}
 
 
 @app.get("/alerts")
 def alerts(authorization: str | None = Header(default=None), db: Session = Depends(get_db)):
     user = current_user(authorization, db)
-    return [{"id": x.id, "type": x.type, "message_en": x.message_en, "message_hi": x.message_hi} for x in db.scalars(select(Alert).where(Alert.user_id == user.id).order_by(Alert.created_at.desc()))]
+    return [serialize_alert(x) for x in db.scalars(select(Alert).where(Alert.user_id == user.id).order_by(Alert.created_at.desc()))]
 
 
 @app.get("/offers")
@@ -215,16 +222,15 @@ def chat(payload: ChatRequest, authorization: str | None = Header(default=None),
         db.add(ChatMessage(user_id=user.id, role="assistant", content=reply, lang=language))
         db.commit()
         return {"reply": reply, "tool_traces": traces + ["get_balance"]}
-    lower_message = message
     reply = {
         "hi": "मैं आपके बैलेंस, ऑफर, हाल की गतिविधि या ग्रेस अवधि में मदद कर सकता हूं।",
         "gu": "હું તમારા બેલેન્સ, ઓફર્સ, તાજેતરની પ્રવૃત્તિ અથવા ગ્રેસ અવધિમાં મદદ કરી શકું છું.",
     }.get(language, "I can help with your balance, offers, recent transactions, or a grace period.")
-    if any(word in lower_message for word in ("offer", "offers", "સૂચન", "ऑफर")):
+    if any(word in message for word in ("offer", "offers", "સૂચન", "ऑफर")):
         reply = {"hi": "आपके खाते के लिए उपलब्ध सुझाव सुरक्षा नियमों के अनुसार दिखाए गए हैं। ऑफर टैब में हर सुझाव का कारण देखें।", "gu": "તમારા ખાતા માટેની ભલામણો સુરક્ષા નિયમો મુજબ બતાવવામાં આવી છે. દરેક કારણ જોવા માટે ભલામણો જુઓ."}.get(language, "Your available recommendations are selected using your account activity and safety rules. Open recommendations to see the reason for each one.")
-    elif any(word in lower_message for word in ("transaction", "payment", "भुगतान", "लेनदेन", "ચુકવણી")):
+    elif any(word in message for word in ("transaction", "payment", "भुगतान", "लेनदेन", "ચુકવણી")):
         reply = {"hi": "आपकी हाल की गतिविधि में भुगतान, राशि और सुरक्षा स्थिति दिखाई जाती है। किसी संदिग्ध भुगतान को सुरक्षा जांच में भेजा जा सकता है।", "gu": "તમારી તાજેતરની પ્રવૃત્તિમાં ચુકવણી, રકમ અને સુરક્ષા સ્થિતિ દેખાય છે. શંકાસ્પદ ચુકવણી સુરક્ષા તપાસમાં જઈ શકે છે."}.get(language, "Your recent activity shows each payment, amount, and safety status. Suspicious payments may be sent for a safety check.")
-    elif any(word in lower_message for word in ("save", "saving", "emergency", "बचत", "आपात", "બચત")):
+    elif any(word in message for word in ("save", "saving", "emergency", "बचत", "आपात", "બચત")):
         reply = {"hi": "आपकी बचत दर और 30 दिन के खर्च को साथ देखकर आपातकालीन निधि का लक्ष्य तय करना आसान होगा।", "gu": "તમારા બચત દર અને 30 દિવસના ખર્ચને સાથે જોઈને ઇમરજન્સી ફંડનું લક્ષ્ય નક્કી કરી શકાય છે."}.get(language, "Compare your savings rate with your 30-day spend, then set an emergency-fund target that fits your cash flow.")
     model_reply, llm_status = generate_reply_with_status(payload.message, language, "\n\n".join(document.content for document in policy_context), bool(score and score.stress_flag))
     if model_reply:
@@ -243,7 +249,10 @@ def explain_transaction(transaction_id: str, authorization: str | None = Header(
         raise HTTPException(404, detail={"error": "Transaction not found", "code": "NOT_FOUND", "details": {}})
     audit = db.scalar(select(AuditLog).where(AuditLog.user_id == user.id, AuditLog.transaction_id == transaction.id).order_by(AuditLog.created_at.desc()))
     reasons = audit.reasons if audit else []
-    return {"id": transaction.id, "status": transaction.status, "fraud_score": transaction.fraud_score, "features": audit.features if audit else {}, "fired_rules": reasons, "explanation_en": "This score reflects amount, time, device, location, and velocity signals.", "explanation_hi": "यह स्कोर राशि, समय, डिवाइस, स्थान और गति के संकेतों पर आधारित है।"}
+    return {"id": transaction.id, "status": transaction.status, "fraud_score": transaction.fraud_score, "features": audit.features if audit else {}, "fired_rules": reasons,
+           "explanation_en": "This score reflects amount, time, device, location, and velocity signals.",
+           "explanation_hi": "यह स्कोर राशि, समय, डिवाइस, स्थान और गति के संकेतों पर आधारित है।",
+           "explanation_gu": "આ સ્કોર રકમ, સમય, ડિવાઇસ, સ્થાન અને ગતિના સંકેતોને પ્રતિબિંબિત કરે છે."}
 
 
 @app.get("/explain/user/{user_id}")
@@ -252,4 +261,16 @@ def explain_user(user_id: str, authorization: str | None = Header(default=None),
     if user.id != user_id:
         raise HTTPException(403, detail={"error": "Forbidden", "code": "FORBIDDEN", "details": {}})
     score = db.get(UserScore, user.id)
-    return {"user_id": user.id, "segment": score.segment if score else "BASELINE", "stress_flag": score.stress_flag if score else False, "ethics_explanation": "Credit products are dropped when stress is detected; grace support remains available."}
+    stress_flag = score.stress_flag if score else False
+    # Mirrors the same EN/HI/GU choice offer_rules() and the /chat ethics
+    # gate already make (grace support, never credit, once stress is
+    # detected) -- previously English-only here, so the Explain view's
+    # ethics line reverted to English the moment this endpoint's response
+    # arrived, even in a Hindi/Gujarati session.
+    ethics = {
+        "en": "Credit products are dropped when stress is detected; grace support remains available." if stress_flag else "Relevant, non-credit offers remain available; credit products are withheld only when stress is detected.",
+        "hi": "तनाव का पता चलने पर क्रेडिट उत्पाद हटा दिए जाते हैं; ग्रेस सहायता उपलब्ध रहती है।" if stress_flag else "प्रासंगिक, गैर-क्रेडिट सुझाव उपलब्ध रहते हैं; क्रेडिट उत्पाद केवल तनाव का पता चलने पर रोके जाते हैं।",
+        "gu": "તણાવ શોધાય ત્યારે ક્રેડિટ ઉત્પાદનો દૂર કરવામાં આવે છે; ગ્રેસ સહાય ઉપલબ્ધ રહે છે." if stress_flag else "સંબંધિત, બિન-ક્રેડિટ ભલામણો ઉપલબ્ધ રહે છે; ક્રેડિટ ઉત્પાદનો ફક્ત તણાવ શોધાય ત્યારે જ રોકવામાં આવે છે.",
+    }
+    return {"user_id": user.id, "segment": score.segment if score else "BASELINE", "stress_flag": stress_flag,
+           "ethics_explanation": ethics["en"], "ethics_explanation_hi": ethics["hi"], "ethics_explanation_gu": ethics["gu"]}
