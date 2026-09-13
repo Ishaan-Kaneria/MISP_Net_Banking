@@ -25,6 +25,38 @@ _BACKGROUND_MERCHANTS = [
     ("Local Store", "UNKNOWN", 250), ("Chemist", "UNKNOWN", 180),
 ]
 
+# One or two large, story-appropriate one-off payments per segment -- kept
+# as a lookup (rather than only inline in each builder below) so `seed()`
+# can also backfill them onto personas that already exist in a live
+# database, not just apply them when a persona is created for the first
+# time. See `_seed_big_ticket_history` for why each entry is safe to
+# re-apply on every restart.
+BIG_TICKET_PURCHASES: dict[str, list[tuple[int, float, str, str]]] = {
+    "SAVER": [
+        (58, 68000, "Croma Electronics", "UNKNOWN"),      # a new fridge -- a saver's real big-ticket buy
+        (140, 42000, "LIC Premium", "UNKNOWN"),           # annual insurance premium, paid once a year
+    ],
+    "MEDICAL": [
+        (45, 55000, "Apollo Hospital Billing", "HOSPITAL"),  # a bigger, earlier procedure -- outside the 30-day window this segment's story depends on
+    ],
+    "FIRST_JOB": [
+        (45, 25000, "New Apartment Deposit", "UNKNOWN"),  # a security deposit -- a very real first-job big-ticket cost
+    ],
+    "MARRIAGE": [
+        (70, 150000, "Grand Wedding Hall", "UNKNOWN"),   # the venue booking deposit, months before the big day
+        (50, 95000, "Zaveri Jewellers", "UNKNOWN"),      # a larger jewellery order, ahead of the smaller one within her 30-day window
+    ],
+    "HIGH_VELOCITY": [
+        (55, 62000, "Croma Electronics", "UNKNOWN"),  # even a high-velocity spender has the occasional big one-off
+    ],
+    "BASELINE": [
+        (50, 58000, "MakeMyTrip", "UNKNOWN"),  # an annual family vacation booking -- ordinary, occasional, large
+    ],
+    "STRESS": [
+        (110, 45000, "Car Repair Workshop", "UNKNOWN"),  # part of the real story: the emergency expense that started the cash-flow strain, before the EMIs stopped
+    ],
+}
+
 
 def _seed_big_ticket_history(db, user: User, purchases: list[tuple[int, float, str, str]]) -> None:
     """A handful of large, real-life one-off payments -- rent deposits,
@@ -40,9 +72,21 @@ def _seed_big_ticket_history(db, user: User, purchases: list[tuple[int, float, s
     a payee you pay every week), which is also the more realistic --and
     harder-- case for the fraud engine: a large amount with no repeat
     history at all, not just a large amount to an already-familiar payee.
+
+    Checks each entry individually before inserting (matched on user +
+    payee + amount) rather than being skipped wholesale for personas that
+    already exist -- `seed()` runs on every app startup and only creates a
+    persona's *entire* history once, on first creation. Without this
+    per-item check, this function could never backfill the personas
+    already sitting in a live database from before this history existed
+    (exactly the deployed demo's actual state), and a plain unconditional
+    insert would instead duplicate every row on every subsequent restart.
     """
     now = datetime.now(timezone.utc)
     for days_ago, amount, payee, category in purchases:
+        already_present = db.scalar(select(Transaction.id).where(Transaction.user_id == user.id, Transaction.payee == payee, Transaction.amount == amount))
+        if already_present:
+            continue
         db.add(Transaction(user_id=user.id, amount=amount, direction="debit", payee=payee, category=category, device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.05))
 
 
@@ -83,10 +127,7 @@ def _seed_saver_history(db, user: User) -> None:
     db.add(Transaction(user_id=user.id, amount=499, direction="debit", payee="Netflix", category="ENTERTAINMENT", device_id=user.device_id, ts=now - timedelta(days=10), status="posted", fraud_score=0.03))
 
     _seed_lived_in_history(db, user)
-    _seed_big_ticket_history(db, user, [
-        (58, 68000, "Croma Electronics", "UNKNOWN"),      # a new fridge -- a saver's real big-ticket buy
-        (140, 42000, "LIC Premium", "UNKNOWN"),           # annual insurance premium, paid once a year
-    ])
+    _seed_big_ticket_history(db, user, BIG_TICKET_PURCHASES["SAVER"])
 
 
 def _seed_medical_history(db, user: User) -> None:
@@ -105,9 +146,7 @@ def _seed_medical_history(db, user: User) -> None:
         db.add(Transaction(user_id=user.id, amount=450 + days_ago * 8, direction="debit", payee="Zepto", category="UPI_GROCERY", device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.03))
 
     _seed_lived_in_history(db, user)
-    _seed_big_ticket_history(db, user, [
-        (45, 55000, "Apollo Hospital Billing", "HOSPITAL"),  # a bigger, earlier procedure -- outside the 30-day window this segment's story depends on
-    ])
+    _seed_big_ticket_history(db, user, BIG_TICKET_PURCHASES["MEDICAL"])
 
 
 def _seed_first_job_history(db, user: User) -> None:
@@ -130,9 +169,7 @@ def _seed_first_job_history(db, user: User) -> None:
     db.add(Transaction(user_id=user.id, amount=199, direction="debit", payee="Netflix", category="ENTERTAINMENT", device_id=user.device_id, ts=now - timedelta(days=7), status="posted", fraud_score=0.03))
 
     _seed_lived_in_history(db, user)
-    _seed_big_ticket_history(db, user, [
-        (45, 25000, "New Apartment Deposit", "UNKNOWN"),  # a security deposit -- a very real first-job big-ticket cost
-    ])
+    _seed_big_ticket_history(db, user, BIG_TICKET_PURCHASES["FIRST_JOB"])
 
 
 def _seed_marriage_history(db, user: User) -> None:
@@ -154,10 +191,7 @@ def _seed_marriage_history(db, user: User) -> None:
         db.add(Transaction(user_id=user.id, amount=amount, direction="debit", payee="Zepto", category="UPI_GROCERY", device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.03))
 
     _seed_lived_in_history(db, user)
-    _seed_big_ticket_history(db, user, [
-        (70, 150000, "Grand Wedding Hall", "UNKNOWN"),   # the venue booking deposit, months before the big day
-        (50, 95000, "Zaveri Jewellers", "UNKNOWN"),      # a larger jewellery order, ahead of the smaller one within her 30-day window
-    ])
+    _seed_big_ticket_history(db, user, BIG_TICKET_PURCHASES["MARRIAGE"])
 
 
 def _seed_high_velocity_history(db, user: User) -> None:
@@ -177,9 +211,7 @@ def _seed_high_velocity_history(db, user: User) -> None:
         db.add(Transaction(user_id=user.id, amount=120 + index * 35, direction="debit", payee=merchant, device_id=user.device_id, ts=now - timedelta(days=index % 6, hours=index), status="posted", fraud_score=0.03))
 
     _seed_lived_in_history(db, user)
-    _seed_big_ticket_history(db, user, [
-        (55, 62000, "Croma Electronics", "UNKNOWN"),  # even a high-velocity spender has the occasional big one-off
-    ])
+    _seed_big_ticket_history(db, user, BIG_TICKET_PURCHASES["HIGH_VELOCITY"])
 
 
 def _seed_baseline_history(db, user: User) -> None:
@@ -205,9 +237,7 @@ def _seed_baseline_history(db, user: User) -> None:
     db.add(Transaction(user_id=user.id, amount=9000, direction="debit", payee="Rent", device_id=user.device_id, ts=now - timedelta(days=8), status="posted", fraud_score=0.03))
 
     _seed_lived_in_history(db, user)
-    _seed_big_ticket_history(db, user, [
-        (50, 58000, "MakeMyTrip", "UNKNOWN"),  # an annual family vacation booking -- ordinary, occasional, large
-    ])
+    _seed_big_ticket_history(db, user, BIG_TICKET_PURCHASES["BASELINE"])
 
 
 def _seed_stress_history(db, user: User) -> None:
@@ -229,9 +259,7 @@ def _seed_stress_history(db, user: User) -> None:
         db.add(Transaction(user_id=user.id, amount=900 + days_ago * 15, direction="debit", payee="Upi_grocery", category="UPI_GROCERY", device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.04))
 
     _seed_lived_in_history(db, user)
-    _seed_big_ticket_history(db, user, [
-        (110, 45000, "Car Repair Workshop", "UNKNOWN"),  # part of the real story: the emergency expense that started the cash-flow strain, before the EMIs stopped
-    ])
+    _seed_big_ticket_history(db, user, BIG_TICKET_PURCHASES["STRESS"])
 
 
 # Per-segment history builders and a matching initial UserFeature snapshot
@@ -264,6 +292,13 @@ def seed() -> None:
         for name, phone, lang, segment, balance in PERSONAS:
             user = db.scalar(select(User).where(User.phone == phone))
             if user:
+                # The persona already exists (this is every already-deployed
+                # environment, not just a hypothetical) -- its full history
+                # was seeded once and won't be recreated, but the new
+                # big-ticket purchases are still worth backfilling onto it.
+                # Safe to call unconditionally: each entry checks for itself
+                # before inserting (see _seed_big_ticket_history).
+                _seed_big_ticket_history(db, user, BIG_TICKET_PURCHASES[segment])
                 continue
             user = User(name=name, phone=phone, lang=lang, pin_hash=hash_pin("1234"), kyc_status="pending", device_id=f"device-{phone[-4:]}")
             db.add(user)
