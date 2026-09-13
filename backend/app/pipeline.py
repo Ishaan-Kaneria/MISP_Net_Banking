@@ -78,6 +78,29 @@ def savings_rate(credits: float, debits: float) -> float:
     return round(max(-1.0, min(1.0, (credits - debits) / credits)), 3)
 
 
+def sync_recommendations(db: Session, user_id: str, recommendations: list[tuple[str, str, bool]]) -> None:
+    """Upsert an offer set for a customer, keyed by product code.
+
+    Extracted from run_pipeline so `app/seed.py` can derive a persona's opening
+    recommendations from the behavioural history it just built. Without that,
+    recommendations only ever came into existence as a side effect of scoring a
+    *new* transaction — so a customer with nine months of history who had not
+    yet paid anyone since signing in saw an empty Recommendations page, and the
+    personalization engine appeared to have nothing to say about them.
+    """
+    existing = {item.product_code: item for item in db.scalars(select(Recommendation).where(Recommendation.user_id == user_id))}
+    for code, reason, blocked in recommendations:
+        current = existing.get(code)
+        if current:
+            current.reason = reason
+            current.blocked_by_ethics = blocked
+            db.add(current)
+        else:
+            created = Recommendation(user_id=user_id, product_code=code, reason=reason, blocked_by_ethics=blocked)
+            db.add(created)
+            existing[code] = created
+
+
 def run_pipeline(db: Session, user_id: str, payload, *, force_post: bool = False) -> tuple[Transaction, list[str], list[str]]:
     """`force_post` is for money that has already been verified and captured
     by an external, already-KYC'd payment gateway (e.g. a Razorpay top-up
@@ -95,7 +118,17 @@ def run_pipeline(db: Session, user_id: str, payload, *, force_post: bool = False
     category = classify(payload.payee, payload.mcc)
     user = db.get(User, user_id)
     history = list(db.scalars(select(Transaction).where(Transaction.user_id == user_id).order_by(Transaction.ts.desc()).limit(100)))
-    previous = history[0] if history else None
+    # The last place the customer verifiably *was*, which means the last
+    # transaction that actually went through. This used to take history[0]
+    # regardless of status, so a blocked payment still set the origin for the
+    # next geo-jump calculation -- with two consequences. A genuine payment made
+    # from home right after an attacker's blocked attempt from another city was
+    # itself scored as impossible travel, and an attacker could deliberately
+    # poison the baseline with attempts they knew would be refused. Money never
+    # moved for those attempts, and the coordinates on them are exactly the
+    # ones we did not trust. Every other history-derived feature here already
+    # filters on posted (see prior_debits and payee_frequency_30d below).
+    previous = next((t for t in history if t.status == "posted"), None)
     # with_for_update() locks this account row for the rest of the
     # transaction (a no-op on SQLite, which has no row-level locking, but a
     # real fix on Postgres): without it, two debits fired close enough
@@ -228,17 +261,7 @@ def run_pipeline(db: Session, user_id: str, payload, *, force_post: bool = False
                                   savings_rate=feature.savings_rate, salary_amt=float(feature.salary_amt),
                                   emi_count=feature.emi_count, night_txn_ratio=feature.night_txn_ratio,
                                   unique_payees_7d=feature.unique_payees_7d, balance=current_balance)
-    existing_offers = {item.product_code: item for item in db.scalars(select(Recommendation).where(Recommendation.user_id == user_id))}
-    for code, reason, blocked in recommendations:
-        current = existing_offers.get(code)
-        if current:
-            current.reason = reason
-            current.blocked_by_ethics = blocked
-            db.add(current)
-        else:
-            created = Recommendation(user_id=user_id, product_code=code, reason=reason, blocked_by_ethics=blocked)
-            db.add(created)
-            existing_offers[code] = created
+    sync_recommendations(db, user_id, recommendations)
     alert_ids = []
     if status == "blocked":
         alert = Alert(user_id=user_id, type="fraud", message_hi="यह भुगतान सुरक्षा कारणों से रोक दिया गया है।", message_en="This payment was blocked for your protection.", message_gu="આ ચુકવણી સુરક્ષા કારણોસર રોકવામાં આવી છે.")

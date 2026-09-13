@@ -149,3 +149,19 @@ def test_watchlist_still_applies_in_both_directions():
 
 def test_segments_are_unchanged():
     assert len(SEGMENTS) == 7
+
+
+def test_blocked_attempt_does_not_become_the_next_geo_baseline(client, auth):
+    """A refused payment never happened, so it must not define where the
+    customer last was. Taking the newest transaction of *any* status meant a
+    genuine payment from home, made right after an attacker's blocked attempt
+    from another city, was itself scored as impossible travel — and let an
+    attacker poison the baseline with attempts they knew would be refused.
+    """
+    auth = auth("9000000007")
+    blocked = pay(client, auth, amount=30000, payee="Cash Transfer", lat=19.0760, lng=72.8777)
+    assert blocked["status"] == "blocked" and "GEO_JUMP_HIGH_VALUE" in blocked["fired_rules"]
+
+    # Same city as the persona's real history, immediately afterwards.
+    genuine = pay(client, auth, amount=16000, payee="Monthly Rent", lat=22.5726, lng=88.3639)
+    assert "GEO_JUMP_HIGH_VALUE" not in genuine["fired_rules"]

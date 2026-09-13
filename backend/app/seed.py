@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 
 from .db import Base, SessionLocal, engine
 from .models import Account, Transaction, User, UserFeature, UserScore
+from .pipeline import sync_recommendations
+from .rules import offer_rules
 from .security import hash_pin
 
 PERSONAS = [
@@ -349,8 +351,21 @@ def seed() -> None:
             HISTORY_BUILDERS[segment](db, user)
             db.flush()
             _apply_home_coordinates(db, user, phone)
-            db.add(UserFeature(user_id=user.id, **INITIAL_FEATURES[segment]))
+            features = INITIAL_FEATURES[segment]
+            db.add(UserFeature(user_id=user.id, **features))
             db.add(UserScore(user_id=user.id, segment=segment, life_stage=segment, stress_flag=segment == "STRESS"))
+            # Derive the persona's opening recommendations from the history we
+            # just built. Recommendations used to be created only as a side
+            # effect of scoring a *new* transaction, so every persona signed in
+            # to an empty Recommendations page despite nine months of history
+            # sitting behind them -- the personalization engine looking like it
+            # had nothing to say until you poked it.
+            sync_recommendations(db, user.id, offer_rules(
+                "UNKNOWN", segment, segment == "STRESS", 0.0, float(features["spend_30d"]),
+                savings_rate=features["savings_rate"], salary_amt=float(features["salary_amt"]),
+                emi_count=features["emi_count"], night_txn_ratio=0.0,
+                unique_payees_7d=0, balance=float(balance),
+            ))
         db.commit()
 
 
