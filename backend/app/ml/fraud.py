@@ -10,10 +10,10 @@ MODEL_PATH = Path(__file__).parent / "models" / "iforest.joblib"
 CLASSIFIER_PATH = Path(__file__).parent / "models" / "fraud_classifier.joblib"
 THRESHOLD_PATH = Path(__file__).parent / "models" / "fraud_thresholds.json"
 # Fallback used only when train_models.py has never been run against this
-# checkout (no fraud_thresholds.json on disk yet) -- matches the value the
-# training script itself writes as "hard_rule_threshold", so behavior is
-# unchanged wherever the file exists.
-DEFAULT_BLOCK_THRESHOLD = 0.82
+# checkout (no fraud_thresholds.json on disk yet). Close to the value the
+# trainer's own F1 search converges on, so a checkout without artifacts
+# behaves roughly like a trained one rather than a far more permissive one.
+DEFAULT_BLOCK_THRESHOLD = 0.43
 
 
 def _normal_training_data() -> np.ndarray:
@@ -34,14 +34,43 @@ def _model() -> IsolationForest:
 
 _FRAUD_MODEL = joblib.load(MODEL_PATH) if MODEL_PATH.exists() else _model()
 _FRAUD_CLASSIFIER = joblib.load(CLASSIFIER_PATH) if CLASSIFIER_PATH.exists() else None
-# This file used to be written by train_models.py and never read anywhere --
-# a genuine F1-optimal threshold (0.52) was tuned on held-out validation
-# data every retrain, then silently discarded in favor of a threshold
-# hardcoded separately in pipeline.py. Loading it here so a retrain's tuning
-# actually takes effect instead of being thrown away.
-BLOCK_THRESHOLD = DEFAULT_BLOCK_THRESHOLD
+# Known fix (2026-09): read `decision_threshold` -- the value the trainer
+# actually tunes on held-out validation data and reports every metric at --
+# not `hard_rule_threshold`, which was a hardcoded 0.82 constant the trainer
+# wrote out but never tuned, evaluated, or justified.
+#
+# A previous fix moved this lookup out of pipeline.py to stop the tuned value
+# being discarded, but read the wrong key, so it went on being discarded: the
+# published precision/recall described a 0.43 cut-off while production blocked
+# at 0.82. The customer-visible consequence was that the ML model's one
+# genuinely independent contribution -- an atypically large payment draining a
+# real share of the balance to a brand-new payee, with no hard rule fired --
+# scored 0.549 and posted. That is the exact social-engineering pattern the
+# classifier exists to catch, and the threshold mismatch switched it off.
+#
+# The fix turns the two numbers into a two-band policy, which is what a bank
+# actually does and what each threshold is genuinely fit for:
+#
+#   score >= HARD_BLOCK_THRESHOLD  -> blocked outright
+#   score >= REVIEW_THRESHOLD      -> held for step-up confirmation
+#   otherwise                      -> posted
+#
+# A single cut-off cannot serve both ends. At 0.82 alone the social-engineering
+# pattern posted silently; at 0.43 alone a customer's first large payment to a
+# new landlord (0.562 -- genuinely the same shape in the data: new payee, large
+# versus their own typical spend, real share of balance) was blocked outright,
+# which is the punitive treatment this project argues against. Challenging that
+# payment with the one-time code the app already implements resolves both: a
+# real customer confirms and the money moves, while someone who has taken over
+# an account cannot complete the challenge.
+REVIEW_THRESHOLD = DEFAULT_BLOCK_THRESHOLD
+HARD_BLOCK_THRESHOLD = 0.82
 if THRESHOLD_PATH.exists():
-    BLOCK_THRESHOLD = json.loads(THRESHOLD_PATH.read_text(encoding="utf-8")).get("hard_rule_threshold", DEFAULT_BLOCK_THRESHOLD)
+    _thresholds = json.loads(THRESHOLD_PATH.read_text(encoding="utf-8"))
+    REVIEW_THRESHOLD = float(_thresholds.get("decision_threshold", DEFAULT_BLOCK_THRESHOLD))
+    HARD_BLOCK_THRESHOLD = float(_thresholds.get("hard_block_threshold", HARD_BLOCK_THRESHOLD))
+# Retained for callers that only care about "would this be stopped at all".
+BLOCK_THRESHOLD = REVIEW_THRESHOLD
 
 
 # Both trained models were fit on debit-shaped behavior only (device/location/

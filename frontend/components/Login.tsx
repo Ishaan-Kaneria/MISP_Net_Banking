@@ -80,7 +80,7 @@ export function Login({ language, setLanguage, onLogin }: { language: Language; 
               label={copy.pinLabel} value={pin} onChange={setPin} type={showPin ? "text" : "password"}
               rightSlot={
                 <button type="button" aria-label={showPin ? copy.hidePin : copy.showPin} onClick={() => setShowPin(current => !current)}
-                  className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-2 text-xs font-semibold text-muted hover:text-ink">
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-2 text-xs font-semibold text-muted transition-colors hover:text-ink">
                   {showPin ? copy.hidePin : copy.showPin}
                 </button>
               }

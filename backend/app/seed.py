@@ -1,6 +1,8 @@
+import random
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from .db import Base, SessionLocal, engine
 from .models import Account, Transaction, User, UserFeature, UserScore
@@ -286,6 +288,42 @@ INITIAL_FEATURES = {
 }
 
 
+# Where each persona does their everyday banking. Ahmedabad for the Gujarati
+# speaker, Delhi/Mumbai/Chennai/Kolkata for the rest -- real cities, so a
+# "sudden jump to another city" in the simulator is a jump from somewhere.
+HOME_LOCATIONS = {
+    "9000000001": (23.0225, 72.5714),   # Ahmedabad
+    "9000000002": (28.6139, 77.2090),   # Delhi
+    "9000000003": (28.7041, 77.1025),   # Delhi (north)
+    "9000000004": (19.0760, 72.8777),   # Mumbai
+    "9000000005": (28.5355, 77.3910),   # Noida
+    "9000000006": (13.0827, 80.2707),   # Chennai
+    "9000000007": (22.5726, 88.3639),   # Kolkata
+}
+DEFAULT_HOME = (28.6139, 77.2090)
+
+
+def _apply_home_coordinates(db: Session, user: User, phone: str) -> None:
+    """Give every seeded transaction a location near the persona's home city.
+
+    Known fix (2026-09): not one of the ~380 seeded transactions carried a
+    lat/lng, and `pipeline.haversine_km` returns 0.0 the moment either endpoint
+    is None. So `km_from_last` was a constant 0 for the first payment any demo
+    persona ever made, which meant `GEO_JUMP_HIGH_VALUE` -- a headline rule in
+    the README, the deck, and the Safety Simulator's own explanations -- could
+    not fire on the exact path a reviewer walks, and the fraud model received a
+    dead feature. Coordinates are jittered deterministically per persona so
+    re-seeding is reproducible, and kept within a few km of home so ordinary
+    history reads as ordinary.
+    """
+    home_lat, home_lng = HOME_LOCATIONS.get(phone, DEFAULT_HOME)
+    rng = random.Random(phone)
+    for transaction in db.scalars(select(Transaction).where(Transaction.user_id == user.id, Transaction.lat.is_(None))):
+        transaction.lat = round(home_lat + rng.uniform(-0.05, 0.05), 6)
+        transaction.lng = round(home_lng + rng.uniform(-0.05, 0.05), 6)
+        db.add(transaction)
+
+
 def seed() -> None:
     Base.metadata.create_all(engine)
     with SessionLocal() as db:
@@ -299,12 +337,18 @@ def seed() -> None:
                 # Safe to call unconditionally: each entry checks for itself
                 # before inserting (see _seed_big_ticket_history).
                 _seed_big_ticket_history(db, user, BIG_TICKET_PURCHASES[segment])
+                # Backfills coordinates onto already-deployed personas too,
+                # whose history was seeded before transactions carried any.
+                _apply_home_coordinates(db, user, phone)
+                db.commit()
                 continue
             user = User(name=name, phone=phone, lang=lang, pin_hash=hash_pin("1234"), kyc_status="pending", device_id=f"device-{phone[-4:]}")
             db.add(user)
             db.flush()
             db.add(Account(user_id=user.id, balance=balance))
             HISTORY_BUILDERS[segment](db, user)
+            db.flush()
+            _apply_home_coordinates(db, user, phone)
             db.add(UserFeature(user_id=user.id, **INITIAL_FEATURES[segment]))
             db.add(UserScore(user_id=user.id, segment=segment, life_stage=segment, stress_flag=segment == "STRESS"))
         db.commit()

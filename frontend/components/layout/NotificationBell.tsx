@@ -5,6 +5,7 @@ import { AlertCircle, Bell, CheckCircle2 } from "lucide-react";
 import type { Dashboard, Language } from "../../lib/types";
 import { alertMessage } from "../../lib/types";
 import type { TranslationCopy } from "../../lib/translations";
+import { ALERT_TONE_CLASSES, alertLabel } from "../../lib/alerts";
 
 const SEEN_KEY = "mispbank_seen_alerts";
 
@@ -62,7 +63,7 @@ export function NotificationBell({ alerts, copy, language }: { alerts: Dashboard
 
   return (
     <div ref={containerRef} className="relative">
-      <button aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ""}`} onClick={toggle} className="relative rounded p-1.5 text-[#5c7291] hover:text-ink">
+      <button aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ""}`} onClick={toggle} className="relative rounded p-1.5 text-[#5c7291] transition-colors hover:bg-paper hover:text-ink">
         <Bell size={17} />
         {unreadCount > 0 && (
           <span className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full border border-white bg-danger px-1 text-[9px] font-bold text-white">
@@ -79,11 +80,11 @@ export function NotificationBell({ alerts, copy, language }: { alerts: Dashboard
             )}
             {alerts.map(alert => (
               <div key={alert.id} className="flex items-start gap-2.5 border-b border-border px-4 py-3 last:border-b-0">
-                <span className={`mt-0.5 grid h-6 w-6 flex-none place-items-center rounded-full ${alert.type === "fraud" ? "bg-danger-light text-danger" : "bg-gold-light text-gold"}`}>
+                <span className={`mt-0.5 grid h-6 w-6 flex-none place-items-center rounded-full ${ALERT_TONE_CLASSES[alertLabel(alert.type, copy).tone]}`}>
                   <AlertCircle size={13} />
                 </span>
                 <div className="min-w-0">
-                  <strong className="block text-xs text-navy">{alert.type === "fraud" ? copy.paymentProtection : copy.cashFlowSupport}</strong>
+                  <strong className="block text-xs text-navy">{alertLabel(alert.type, copy).title}</strong>
                   <p className="mt-1 text-xs leading-relaxed text-muted">{alertMessage(alert, language)}</p>
                 </div>
               </div>

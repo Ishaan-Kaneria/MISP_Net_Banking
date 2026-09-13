@@ -1,7 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
   return <div className={`rounded-xl border border-border bg-white shadow-card ${className}`}>{children}</div>;
@@ -56,13 +56,55 @@ export function Badge({ tone = "muted", children }: { tone?: "success" | "danger
   return <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${tones[tone]}`}>{children}</span>;
 }
 
+/**
+ * `role="dialog" aria-modal="true"` was already here, but nothing behind it:
+ * Escape did not close the dialog, focus was free to wander into the page
+ * underneath while assistive tech was being told the rest of the page was
+ * inert, and the body kept scrolling behind the overlay. The step-up OTP and
+ * Add Money dialogs are the two places in this app where a customer is asked
+ * to authorise money movement, which is the worst place to leave a keyboard
+ * user unable to back out.
+ */
 export function Modal({ onClose, children, maxWidth = 440 }: { onClose: () => void; children: ReactNode; maxWidth?: number }) {
+  const panel = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const { overflow } = document.body.style;
+    document.body.style.overflow = "hidden";
+
+    const focusable = () => Array.from(
+      panel.current?.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])') ?? []
+    );
+    // Move focus into the dialog, unless something inside already claimed it
+    // (the OTP field autofocuses its first box).
+    if (!panel.current?.contains(document.activeElement)) focusable()[0]?.focus();
+
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { onClose(); return; }
+      if (event.key !== "Tab") return;
+      const items = focusable();
+      if (!items.length) return;
+      const [first, last] = [items[0], items[items.length - 1]];
+      // Wrap at both ends so Tab and Shift+Tab stay inside the dialog.
+      if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      else if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    };
+
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("keydown", handleKey);
+      document.body.style.overflow = overflow;
+      previouslyFocused?.focus?.();
+    };
+  }, [onClose]);
+
   return (
     <div
       role="dialog" aria-modal="true" onClick={onClose}
       className="fixed inset-0 z-30 grid place-items-center bg-navy-deep/55 p-5 animate-pop-in"
     >
-      <div onClick={event => event.stopPropagation()} className="w-full rounded-xl bg-white p-7 shadow-pop" style={{ maxWidth }}>
+      <div ref={panel} onClick={event => event.stopPropagation()} className="max-h-[90vh] w-full overflow-y-auto rounded-xl bg-white p-7 shadow-pop scrollbar-thin" style={{ maxWidth }}>
         {children}
       </div>
     </div>
@@ -76,7 +118,7 @@ export function ModalHeader({ eyebrow, title, onClose }: { eyebrow: string; titl
         <p className="m-0 text-[11px] font-bold uppercase tracking-widest text-primary">{eyebrow}</p>
         <h2 className="mt-2 text-xl font-bold text-navy">{title}</h2>
       </div>
-      <button aria-label="Close" onClick={onClose} className="rounded p-1 text-muted hover:text-ink">
+      <button aria-label="Close" onClick={onClose} className="rounded p-1 text-muted transition-colors hover:bg-paper hover:text-ink">
         <X size={20} />
       </button>
     </div>

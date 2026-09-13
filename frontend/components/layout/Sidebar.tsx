@@ -44,7 +44,7 @@ export function Sidebar({
           the header's secure badge -- one screen, two places saying the
           same thing. It now lives once, in the header, so this footer is
           just account-level actions. */}
-      <button onClick={onSignOut} className="mt-auto w-full rounded-md border-t border-white/10 px-2.5 pb-1 pt-3.5 text-left text-xs text-[#a6bad4] hover:bg-white/10 hover:text-white max-md:hidden">
+      <button onClick={onSignOut} className="mt-auto w-full rounded-md border-t border-white/10 px-2.5 pb-1 pt-3.5 text-left text-xs text-[#a6bad4] transition-colors hover:bg-white/10 hover:text-white max-md:hidden">
         {copy.signOut}
       </button>
     </aside>

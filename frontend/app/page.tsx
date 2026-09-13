@@ -2,11 +2,11 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Bell, CircleHelp, LayoutDashboard, MessageCircle, X, Zap } from "lucide-react";
+import { ArrowLeft, Bell, CircleHelp, LayoutDashboard, MessageCircle, ShieldCheck, Sparkles, X, Zap } from "lucide-react";
 import { api, ApiError } from "../lib/api";
 import { copyFor } from "../lib/translations";
 import { isLanguage, rememberLanguage, storedLanguage } from "../lib/language";
-import { isView, type Dashboard, type Language, type View } from "../lib/types";
+import { isView, type ChatTurn, type Dashboard, type Language, type View } from "../lib/types";
 import { Login } from "../components/Login";
 import { Kyc } from "../components/Kyc";
 import { Sidebar } from "../components/layout/Sidebar";
@@ -23,17 +23,26 @@ const Offers = dynamic(() => import("../components/views/Offers").then(m => m.Of
 const Conversation = dynamic(() => import("../components/views/Conversation").then(m => m.Conversation), { ssr: false, loading: () => <ViewSkeleton /> });
 const Explain = dynamic(() => import("../components/views/Explain").then(m => m.Explain), { ssr: false, loading: () => <ViewSkeleton /> });
 const Simulator = dynamic(() => import("../components/views/Simulator").then(m => m.Simulator), { ssr: false, loading: () => <ViewSkeleton /> });
+const Verification = dynamic(() => import("../components/views/Verification").then(m => m.Verification), { ssr: false, loading: () => <ViewSkeleton /> });
 const AddMoneyModal = dynamic(() => import("../components/modals/AddMoneyModal").then(m => m.AddMoneyModal), { ssr: false });
 
 function ViewSkeleton() {
   return <div className="mt-7 h-64 animate-pulse rounded-xl border border-border bg-white" />;
 }
 
+// Every view reachable from the sidebar. "Offers" was missing from this list
+// while being present in VIEWS, so the personalization engine -- the first of
+// the three pillars, and the answer to the hackathon's first ask -- had no
+// navigation entry at all and could only be reached through a single button on
+// the Overview card. "Verification" was worse: reachable exactly once, on the
+// way in, and never again.
 const NAV: Array<{ label: View; icon: typeof LayoutDashboard }> = [
   { label: "Overview", icon: LayoutDashboard },
+  { label: "Offers", icon: Sparkles },
   { label: "Conversation", icon: MessageCircle },
   { label: "Explain", icon: CircleHelp },
   { label: "Simulator", icon: Zap },
+  { label: "Verification", icon: ShieldCheck },
 ];
 
 function App() {
@@ -41,13 +50,19 @@ function App() {
   const [authReady, setAuthReady] = useState(false);
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [view, setView] = useState<View>("Overview");
-  const [chat, setChat] = useState("");
-  const [reply, setReply] = useState("");
+  // The whole thread, not just the latest exchange -- see components/views/Conversation.
+  const [messages, setMessages] = useState<ChatTurn[]>([]);
+  const [sendingChat, setSendingChat] = useState(false);
   const [language, setLanguage] = useState<Language>("en");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [toast, setToast] = useState<{ title: string; message: string } | null>(null);
   const [showAddMoney, setShowAddMoney] = useState(false);
+  // Lets a verified customer re-open the KYC journey from the Verification
+  // view. Banks re-confirm KYC periodically (RBI calls it periodic updation),
+  // and without this the consent screen is reachable exactly once, on the way
+  // in, and then never again for the life of the account.
+  const [forceKyc, setForceKyc] = useState(false);
 
   const load = async () => {
     try {
@@ -100,7 +115,28 @@ function App() {
     if (data?.user.lang && isLanguage(data.user.lang)) setLanguage(data.user.lang);
   }, [data?.user.lang]);
 
+  useEffect(() => {
+    // Persisted conversation, so the thread survives a reload instead of the
+    // assistant appearing to have never spoken to this customer before.
+    if (!data) return;
+    let cancelled = false;
+    api<ChatTurn[]>("/chat/history")
+      .then(history => { if (!cancelled) setMessages(current => (current.length ? current : history)); })
+      .catch(() => { /* history is a convenience; a live chat still works without it */ });
+    return () => { cancelled = true; };
+  }, [data?.user.id]);
+
   useEffect(() => { document.documentElement.lang = language; }, [language]);
+
+  // The toast had no timer and no auto-dismiss: it sat over the top-right of
+  // the dashboard until the visitor found and clicked its small X, covering
+  // the notification bell the whole time. It stays long enough to read, and
+  // the X still dismisses it sooner.
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 6000);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
   useEffect(() => {
     window.history.replaceState({ ...(window.history.state || {}), mispbankView: "Overview" }, "");
@@ -113,7 +149,10 @@ function App() {
     if (nextView === view) return;
     window.history.pushState({ ...(window.history.state || {}), mispbankView: nextView }, "");
     setView(nextView);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    // `scroll-behavior: auto !important` in globals.css cannot override a
+    // behaviour passed explicitly here, so the preference has to be read.
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" });
   };
 
   if (!authReady) return <main className="p-10">Preparing your account...</main>;
@@ -142,7 +181,7 @@ function App() {
   // the onboarding one is, so it survives a reload instead of snapping back to
   // their account default on the next visit.
   const chooseLanguage = (next: Language) => { setLanguage(next); rememberLanguage(next); };
-  if (dashboard.user.kyc_status !== "verified") return <Kyc language={language} setLanguage={chooseLanguage} onComplete={load} />;
+  if (dashboard.user.kyc_status !== "verified" || forceKyc) return <Kyc language={language} setLanguage={chooseLanguage} onComplete={() => { setForceKyc(false); return load(); }} />;
 
   // Was a hardcoded "12 September 2026" that never advanced past the day
   // this screen was first built and never matched the visitor's own
@@ -150,16 +189,27 @@ function App() {
   // Indian locale, instead of a frozen, English-only placeholder.
   const todayLabel = new Intl.DateTimeFormat(`${language}-IN`, { day: "numeric", month: "long", year: "numeric" }).format(new Date());
 
-  const navWithText = NAV.map(item => ({ ...item, text: item.label === "Overview" ? copy.overview : item.label === "Conversation" ? copy.conversation : item.label === "Explain" ? copy.explain : copy.simulator }));
-  const viewLabel = navWithText.find(item => item.label === view)?.text ?? view;
+  const NAV_LABELS: Record<View, string> = {
+    Overview: copy.overview, Offers: copy.recommendations, Conversation: copy.conversation,
+    Explain: copy.explain, Simulator: copy.simulator, Verification: copy.verification,
+  };
+  const navWithText = NAV.map(item => ({ ...item, text: NAV_LABELS[item.label] }));
+  const viewLabel = NAV_LABELS[view] ?? view;
 
   const ask = async (message: string) => {
-    setChat(message);
+    const localId = `local-${Date.now()}`;
+    setMessages(current => [...current, { id: localId, role: "user", content: message, lang: language, ts: new Date().toISOString() }]);
+    setSendingChat(true);
     try {
       const result = await api<{ reply: string }>("/chat", { method: "POST", body: JSON.stringify({ message, lang: language }) });
-      setReply(result.reply);
+      setMessages(current => [...current, { id: `${localId}-reply`, role: "assistant", content: result.reply, lang: language, ts: new Date().toISOString() }]);
     } catch (err) {
-      setReply(err instanceof ApiError ? err.message : "I could not reach the assistant. Please try again.");
+      setMessages(current => [...current, {
+        id: `${localId}-error`, role: "assistant", lang: language, ts: new Date().toISOString(),
+        content: err instanceof ApiError ? err.message : "I could not reach the assistant. Please try again.",
+      }]);
+    } finally {
+      setSendingChat(false);
     }
   };
 
@@ -217,8 +267,9 @@ function App() {
 
           {view === "Overview" && <Overview data={dashboard} copy={copy} onDetails={() => navigate("Offers")} onAddMoney={() => setShowAddMoney(true)} onNavigate={navigate} />}
           {view === "Offers" && <Offers data={dashboard} copy={copy} />}
-          {view === "Conversation" && <Conversation chat={chat} reply={reply} ask={ask} language={language} setLanguage={chooseLanguage} copy={copy} />}
+          {view === "Conversation" && <Conversation messages={messages} ask={ask} sending={sendingChat} language={language} setLanguage={chooseLanguage} copy={copy} />}
           {view === "Explain" && <Explain data={dashboard} copy={copy} language={language} />}
+          {view === "Verification" && <Verification copy={copy} onStartKyc={() => setForceKyc(true)} />}
           {view === "Simulator" && <Simulator balance={dashboard.balance} deviceId={dashboard.user.device_id} copy={copy} onComplete={refresh} />}
         </div>
       </section>

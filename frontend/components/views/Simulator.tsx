@@ -45,10 +45,13 @@ export function Simulator({ balance, deviceId, copy, onComplete }: { balance: nu
   // never moves money at all. That risky preset is still one click away.
   const [form, setForm] = useState({ amount: "1500", payee: "Zepto", lat: "28.61", lng: "77.20", device_id: deviceId || "device-0001", ts: "" });
   const [submittedAmount, setSubmittedAmount] = useState<number | null>(null);
-  const [result, setResult] = useState<{ status: string; fraud_score: number; category: string; fired_rules: string[] } | null>(null);
+  const [result, setResult] = useState<{ id: string; status: string; fraud_score: number; category: string; fired_rules: string[] } | null>(null);
   const [error, setError] = useState("");
   const [showStepUp, setShowStepUp] = useState(false);
   const [running, setRunning] = useState(false);
+  // A payment the engine held needs a *second* step-up: the first one authorised
+  // running the simulation at all, this one releases the specific held payment.
+  const [confirming, setConfirming] = useState(false);
 
   const update = (key: keyof typeof form, value: string) => setForm(current => ({ ...current, [key]: value }));
 
@@ -64,7 +67,7 @@ export function Simulator({ balance, deviceId, copy, onComplete }: { balance: nu
     try {
       setError("");
       const amount = Number(form.amount);
-      const response = await api<{ status: string; fraud_score: number; category: string; fired_rules: string[] }>("/admin/simulate-txn", {
+      const response = await api<{ id: string; status: string; fraud_score: number; category: string; fired_rules: string[] }>("/admin/simulate-txn", {
         method: "POST",
         body: JSON.stringify({
           amount,
@@ -87,6 +90,27 @@ export function Simulator({ balance, deviceId, copy, onComplete }: { balance: nu
     }
   };
 
+  const confirmHeldPayment = async () => {
+    if (!result) return;
+    setRunning(true);
+    try {
+      setError("");
+      const response = await api<{ id: string; status: string; fraud_score: number; category: string; fired_rules: string[] }>(`/txn/${result.id}/confirm`, { method: "POST" });
+      setResult({ ...result, ...response });
+      setConfirming(false);
+      onComplete();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : copy.confirmFailed);
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const tone = result?.status === "posted" ? "bg-success-light"
+    : result?.status === "review" ? "bg-gold-light"
+    : result?.status === "declined" ? "bg-paper"
+    : "bg-danger-light";
+
   return (
     <div className="mt-7 animate-rise">
       {showStepUp && (
@@ -96,13 +120,20 @@ export function Simulator({ balance, deviceId, copy, onComplete }: { balance: nu
           onConfirm={() => void runSimulation()}
         />
       )}
+      {confirming && result && (
+        <StepUpModal
+          summary={{ amount: String(submittedAmount ?? form.amount), payee: form.payee, device_id: form.device_id, lat: form.lat, lng: form.lng }}
+          onClose={() => !running && setConfirming(false)}
+          onConfirm={() => void confirmHeldPayment()}
+        />
+      )}
       <Card className="p-6">
         <p className="text-xs font-bold uppercase tracking-wide text-primary">{copy.liveDemoInjector}</p>
         <h2 className="text-[30px] font-bold">{copy.simulatorTitle}</h2>
         <p className="leading-relaxed text-muted">{copy.simulatorIntro}</p>
         <div className="mt-4 flex flex-wrap gap-2">
-          <button onClick={() => applyPreset("normal")} className="rounded-full border border-border bg-white px-3.5 py-2 text-xs font-semibold text-ink hover:bg-paper">{copy.everydayPaymentPreset}</button>
-          <button onClick={() => applyPreset("risky")} className="rounded-full border border-border bg-white px-3.5 py-2 text-xs font-semibold text-ink hover:bg-paper">{copy.riskyTransferPreset}</button>
+          <button onClick={() => applyPreset("normal")} className="rounded-full border border-border bg-white px-3.5 py-2 text-xs font-semibold text-ink transition-colors hover:border-primary hover:bg-primary-light hover:text-primary">{copy.everydayPaymentPreset}</button>
+          <button onClick={() => applyPreset("risky")} className="rounded-full border border-border bg-white px-3.5 py-2 text-xs font-semibold text-ink transition-colors hover:border-primary hover:bg-primary-light hover:text-primary">{copy.riskyTransferPreset}</button>
         </div>
         <div className="mt-5.5 grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
           {FIELDS.map(([key, labelKey]) => (
@@ -117,9 +148,29 @@ export function Simulator({ balance, deviceId, copy, onComplete }: { balance: nu
         </div>
         {error && <p className="mt-4 text-danger">{error}</p>}
         {result && (
-          <div className={`mt-4.5 rounded-lg p-4 ${result.status === "posted" ? "bg-success-light" : "bg-danger-light"}`}>
-            <p className="m-0 font-bold">{result.status === "posted" ? `− ${money(submittedAmount ?? 0)} ${copy.debited}` : copy.blockedNoMoney}</p>
-            <p className="mt-1 text-sm text-muted">{result.status === "posted" ? `${copy.newBalance}: ${money(balance)}` : copy.balanceProtected}</p>
+          <div className={`mt-4.5 rounded-lg p-4 ${tone}`}>
+            {/* Four outcomes, not two. A payment held for confirmation and a
+                payment declined for balance both used to render in the same
+                alarming red "Blocked — no money moved" banner as a detected
+                takeover, which is exactly the punitive framing this engine is
+                meant to avoid. */}
+            <p className="m-0 font-bold">
+              {result.status === "posted" ? `− ${money(submittedAmount ?? 0)} ${copy.debited}`
+                : result.status === "review" ? copy.reviewTitle
+                : result.status === "declined" ? copy.declinedTitle
+                : copy.blockedNoMoney}
+            </p>
+            <p className="mt-1 text-sm text-muted">
+              {result.status === "posted" ? `${copy.newBalance}: ${money(balance)}`
+                : result.status === "review" ? copy.reviewBody
+                : result.status === "declined" ? copy.declinedBody
+                : copy.balanceProtected}
+            </p>
+            {result.status === "review" && (
+              <Button onClick={() => setConfirming(true)} disabled={running} className="mt-3 px-3.5 py-2.5 text-xs">
+                {copy.confirmPayment}
+              </Button>
+            )}
             <p className="mt-2 text-xs text-muted">{copy.fraudScoreLabel} {result.fraud_score} · {copy.categoryLabel} {result.category}</p>
             {result.fired_rules.length > 0 && (
               <div className="mt-3 border-t border-black/10 pt-3">

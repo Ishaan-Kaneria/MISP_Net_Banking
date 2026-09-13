@@ -13,6 +13,25 @@
   .scrollbar-thin::-webkit-scrollbar-thumb { @apply bg-border rounded-full; }
 }
 
+/* Every view mount runs `animate-rise`, modals and the notification panel run
+   `animate-pop-in`, the loader spins and the skeleton pulses — and none of it
+   was conditioned on the visitor's own motion preference. Someone who has
+   asked their OS to reduce motion (vestibular disorders, migraine triggers,
+   or simply preference) got the full set anyway. Honour the preference by
+   collapsing animation and transition to an instant, still-complete state
+   rather than removing the feedback altogether: `0.01ms` keeps transitionend
+   and animationend handlers firing, which `none` would silently break. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Sidebar / hero gradients reused in a few places that aren't expressible as
    a single Tailwind utility without an arbitrary-value repeat per usage. */
 .gradient-navy { background: linear-gradient(180deg, theme('colors.navy.DEFAULT') 0%, theme('colors.navy.deep') 100%); }

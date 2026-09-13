@@ -5,6 +5,7 @@ import type { Dashboard, Language } from "../../lib/types";
 import { alertMessage, money } from "../../lib/types";
 import { computeAccountHealth } from "../../lib/health";
 import type { TranslationCopy } from "../../lib/translations";
+import { ALERT_TONE_CLASSES, alertLabel } from "../../lib/alerts";
 
 // Each panel gets its own accent color (a top border strip plus a matching
 // icon chip) so the rail reads as distinct, purpose-built cards at a glance
@@ -34,11 +35,11 @@ export function RailAlerts({ data, copy, language }: { data: Dashboard; copy: Tr
     <RailSection title={copy.alerts} icon={<AlertCircle size={13} />} accent="gold">
       {data.alerts.length ? data.alerts.slice(0, 3).map(alert => (
         <div key={alert.id} className="flex items-start gap-2.5 border-t border-[#edf1f8] py-3 first:border-t-0">
-          <span className={`grid h-7 w-7 flex-none place-items-center rounded-md ${alert.type === "fraud" ? "bg-danger-light text-danger" : "bg-gold-light text-gold"}`}>
+          <span className={`grid h-7 w-7 flex-none place-items-center rounded-md ${ALERT_TONE_CLASSES[alertLabel(alert.type, copy).tone]}`}>
             <AlertCircle size={15} />
           </span>
           <div>
-            <strong className="block text-xs text-navy">{alert.type === "fraud" ? copy.paymentProtection : copy.cashFlowSupport}</strong>
+            <strong className="block text-xs text-navy">{alertLabel(alert.type, copy).title}</strong>
             <p className="mt-1 text-[11px] leading-relaxed text-muted">{alertMessage(alert, language)}</p>
           </div>
         </div>
@@ -72,7 +73,14 @@ export function RailActivity({ data, copy }: { data: Dashboard; copy: Translatio
     <RailSection title={copy.activity} icon={<Clock3 size={13} />} accent="neutral">
       {data.transactions.slice(0, 5).map(txn => (
         <div key={txn.id} className="flex items-center gap-2 border-t border-[#edf1f8] py-2.5 first:border-t-0">
-          <span className={`grid h-[23px] w-[23px] flex-none place-items-center rounded text-sm font-bold ${txn.status === "blocked" ? "bg-danger-light text-danger" : "bg-primary-light text-primary"}`}>
+          {/* All four outcomes are visually distinct: a payment held for
+              confirmation and one declined for balance are not the same thing
+              as a fraud block, and must not share its red. */}
+          <span className={`grid h-[23px] w-[23px] flex-none place-items-center rounded text-sm font-bold ${
+            txn.status === "blocked" ? "bg-danger-light text-danger"
+              : txn.status === "review" ? "bg-gold-light text-gold"
+              : txn.status === "declined" ? "bg-paper text-muted"
+              : "bg-primary-light text-primary"}`}>
             {txn.direction === "debit" ? "−" : "+"}
           </span>
           <span className="min-w-0 flex-1">

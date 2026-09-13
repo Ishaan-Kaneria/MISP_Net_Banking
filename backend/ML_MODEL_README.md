@@ -25,7 +25,12 @@ The saved fraud artifacts use these features:
 - `log_amount`: `log1p(amount)` for scale stability.
 - `hour`: local India hour.
 - `is_night`: local hour before 05:00 or from 22:00.
-- `km_from_last`: haversine distance from the previous transaction.
+- `km_from_last`: haversine distance from the previous transaction. Note that
+  `haversine_km` returns 0.0 whenever either endpoint lacks coordinates — and
+  no seeded transaction carried any until 2026-09, so this feature was a
+  constant 0 for every demo persona's first payment and `GEO_JUMP_HIGH_VALUE`
+  could not fire on the path the Safety Simulator walks. Seeded history is now
+  anchored to each persona's home city (`app/seed.py::HOME_LOCATIONS`).
 - `same_device`: whether the request uses the trusted device.
 - `velocity_2m`: recent debit count in the last two minutes.
 - `amount_vs_typical`: amount divided by the customer's median posted debit.
@@ -55,6 +60,44 @@ only seeing large amounts in one class. Re-verified: a known payee at any
 amount up to ₹200,000 now posts normally when no other risk signal is
 present, while the new-payee/balance-drain pattern this feature exists to
 catch is still detected in 93% of matching held-out cases.
+
+## Decision bands
+
+A score alone does not decide the outcome. There are three:
+
+| Outcome | When | What happens to the money |
+|---|---|---|
+| `blocked` | A hard rule fired, or score ≥ `hard_block_threshold` (0.82) | Refused. Nothing moves. |
+| `review` | Score ≥ `decision_threshold` (tuned, ~0.43) | Held for step-up confirmation via `POST /txn/{id}/confirm`. Nothing moves until the customer passes the one-time code. |
+| `posted` | Below both | Posted normally. |
+
+`declined` is a fourth status and deliberately not part of this ladder: it means
+the balance was short, which is not a safety signal at all.
+
+### Known fix: the tuned threshold was never used (2026-09)
+
+`scripts/train_models.py` tunes an F1-optimal threshold on a held-out validation
+split every retrain and reports every fraud metric at it — and
+`app/ml/fraud.py` then loaded `hard_rule_threshold`, a hardcoded 0.82 constant
+that was never tuned or evaluated. So the published precision and recall
+described a cut-off production did not apply. (An earlier fix moved this lookup
+out of `pipeline.py` specifically to stop the tuned value being discarded, but
+read the wrong key, so it went on being discarded.)
+
+The customer-visible consequence: the classifier's one genuinely independent
+contribution — an atypically large payment draining a real share of the balance
+to a brand-new payee, with no hard rule fired — scores about 0.55 and therefore
+**posted silently**. That is the exact social-engineering shape the model exists
+to catch.
+
+Simply lowering the cut-off to 0.43 traded one error for another: a customer's
+first large payment to a new landlord scores 0.562 — genuinely the same shape in
+the features — and would be refused outright. Hence the two bands above. The
+uncertain middle is where a bank asks rather than refuses, and the app already
+had the one-time-code step-up needed to ask.
+
+Verified against ten realistic scenarios through the real pipeline: 3 of 9 wrong
+before, 0 of 10 after.
 
 ## Fraud Controls
 

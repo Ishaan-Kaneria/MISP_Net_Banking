@@ -1,4 +1,5 @@
 {
   "decision_threshold": 0.42999999999999994,
-  "hard_rule_threshold": 0.82
+  "hard_block_threshold": 0.82,
+  "tuned_on": "held-out validation split, F1-optimal"
 }

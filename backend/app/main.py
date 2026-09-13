@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from .config import settings
@@ -90,11 +90,73 @@ def verify_kyc(payload: KycRequest, authorization: str | None = Header(default=N
     return {"kyc_status": "verified", "mock_ref": f"mock-{user.id[:8]}"}
 
 
+@app.get("/kyc/status")
+def kyc_status(authorization: str | None = Header(default=None), db: Session = Depends(get_db)):
+    """The customer's own verification state and consent record.
+
+    The KYC journey was previously a one-way door: personas start `pending`, the
+    screen appears exactly once, and after verifying there was no route back to
+    it anywhere in the app — so the consent record the DPDP safeguards are
+    built around was invisible to the very person who gave it. This exposes what
+    is actually stored (a mock reference, the document type, the language the
+    consent was read in, and when) and deliberately nothing more: there is no
+    document image or Aadhaar number to return, which is the point.
+    """
+    user = current_user(authorization, db)
+    event = db.scalar(select(KycEvent).where(KycEvent.user_id == user.id).order_by(KycEvent.created_at.desc()))
+    consent = event.consent_json if event else {}
+    return {
+        "kyc_status": user.kyc_status,
+        "doc_type": event.doc_type if event else None,
+        "mock_ref": event.mock_ref if event else None,
+        "consent_locale": consent.get("locale") if isinstance(consent, dict) else None,
+        "consent_purpose": consent.get("purpose") if isinstance(consent, dict) else None,
+        "consent_timestamp": consent.get("timestamp") if isinstance(consent, dict) else None,
+        "retained_fields": ["verification reference", "document type", "consent purpose", "consent language", "consent timestamp"],
+        "never_retained": ["document image", "Aadhaar number", "PAN number", "biometrics"],
+    }
+
+
 @app.post("/txn", response_model=TransactionResponse)
 def create_transaction(payload: TransactionRequest, authorization: str | None = Header(default=None), db: Session = Depends(get_db)):
     user = current_user(authorization, db)
     transaction, alert_ids, hard_reasons = run_pipeline(db, user.id, payload)
     return TransactionResponse(id=transaction.id, status=transaction.status, fraud_score=transaction.fraud_score, category=transaction.category, alert_ids=alert_ids, fired_rules=hard_reasons)
+
+
+@app.post("/txn/{transaction_id}/confirm", response_model=TransactionResponse)
+def confirm_transaction(transaction_id: str, authorization: str | None = Header(default=None), db: Session = Depends(get_db)):
+    """Complete a payment the fraud engine held for step-up confirmation.
+
+    A middling fraud score means "this could be a genuine large payment or a
+    social-engineering transfer, and the data cannot tell them apart" — so the
+    customer is asked to confirm rather than being refused outright. Passing the
+    step-up check is what distinguishes the two: an attacker who has the account
+    but not the one-time code cannot get here. Only a transaction still in
+    `review` can be confirmed, so this can never post something a hard rule
+    refused, and the balance is re-checked at confirmation time because it may
+    have moved since the payment was scored.
+    """
+    user = current_user(authorization, db)
+    transaction = db.get(Transaction, transaction_id)
+    if not transaction or transaction.user_id != user.id:
+        raise HTTPException(404, detail={"error": "Transaction not found", "code": "NOT_FOUND", "details": {}})
+    if transaction.status != "review":
+        raise HTTPException(409, detail={"error": "This payment is not waiting for confirmation", "code": "NOT_IN_REVIEW", "details": {"status": transaction.status}})
+    account = db.scalar(select(Account).where(Account.user_id == user.id).with_for_update())
+    if transaction.direction == "debit" and account and transaction.amount > account.balance:
+        transaction.status = "declined"
+        db.commit()
+        raise HTTPException(400, detail={"error": "Your balance no longer covers this payment", "code": "INSUFFICIENT_BALANCE", "details": {}})
+    transaction.status = "posted"
+    if account:
+        account.balance += transaction.amount if transaction.direction == "credit" else -transaction.amount
+    db.add(AuditLog(user_id=user.id, transaction_id=transaction.id, action="txn_step_up_confirmed",
+                   features={"fraud_score": transaction.fraud_score}, reasons=["STEP_UP_CONFIRMED"]))
+    db.commit()
+    db.refresh(transaction)
+    return TransactionResponse(id=transaction.id, status=transaction.status, fraud_score=transaction.fraud_score,
+                               category=transaction.category, alert_ids=[], fired_rules=[])
 
 
 @app.post("/admin/simulate-txn", response_model=TransactionResponse)
@@ -159,6 +221,13 @@ def dashboard(authorization: str | None = Header(default=None), db: Session = De
     txns = list(db.scalars(select(Transaction).where(Transaction.user_id == user.id).order_by(Transaction.ts.desc()).limit(20)))
     offers = unique_by_key(list(db.scalars(select(Recommendation).where(Recommendation.user_id == user.id).order_by(Recommendation.created_at.desc()).limit(24))), "product_code")[:6]
     alerts = unique_by_key(list(db.scalars(select(Alert).where(Alert.user_id == user.id).order_by(Alert.created_at.desc()).limit(24))), "type")[:6]
+    # The list above is deduplicated by type so the UI shows one card per kind
+    # of alert. That makes it useless for counting, and lib/health.ts was
+    # counting it anyway -- scoring `Math.min(fraudAlerts, 3) * 14` against a
+    # list that can never contain more than one alert of a type, so an account
+    # with four blocked fraud attempts scored exactly the same as one with a
+    # single blocked attempt. These are the real per-type totals.
+    alert_counts = dict(db.execute(select(Alert.type, func.count(Alert.id)).where(Alert.user_id == user.id).group_by(Alert.type)).all())
     feature_payload = {
         "spend_7d": float(feature.spend_7d or 0) if feature else 0,
         "spend_30d": float(feature.spend_30d or 0) if feature else 0,
@@ -169,7 +238,7 @@ def dashboard(authorization: str | None = Header(default=None), db: Session = De
         "unique_payees_7d": feature.unique_payees_7d if feature else 0,
         "missed_emi_30d": feature.missed_emi_30d if feature else 0,
     }
-    return {"user": {"id": user.id, "name": user.name, "lang": user.lang, "kyc_status": user.kyc_status, "device_id": user.device_id}, "balance": float(account.balance if account else 0), "segment": score.segment if score else "BASELINE", "stress_flag": score.stress_flag if score else False, "features": feature_payload, "transactions": [{"id": t.id, "amount": float(t.amount), "direction": t.direction, "payee": t.payee, "category": t.category, "status": t.status, "fraud_score": t.fraud_score, "ts": t.ts.isoformat()} for t in txns], "offers": [{"id": x.id, "product_code": x.product_code, "reason": x.reason, "blocked_by_ethics": x.blocked_by_ethics} for x in offers], "alerts": [serialize_alert(x) for x in alerts]}
+    return {"user": {"id": user.id, "name": user.name, "lang": user.lang, "kyc_status": user.kyc_status, "device_id": user.device_id}, "balance": float(account.balance if account else 0), "segment": score.segment if score else "BASELINE", "stress_flag": score.stress_flag if score else False, "features": feature_payload, "transactions": [{"id": t.id, "amount": float(t.amount), "direction": t.direction, "payee": t.payee, "category": t.category, "status": t.status, "fraud_score": t.fraud_score, "ts": t.ts.isoformat()} for t in txns], "offers": [{"id": x.id, "product_code": x.product_code, "reason": x.reason, "blocked_by_ethics": x.blocked_by_ethics} for x in offers], "alerts": [serialize_alert(x) for x in alerts], "alert_counts": {key: int(value) for key, value in alert_counts.items()}}
 
 
 @app.get("/alerts")
@@ -193,6 +262,21 @@ def accept_offer(recommendation_id: str, authorization: str | None = Header(defa
     if recommendation.blocked_by_ethics:
         return {"accepted": False, "reason": "This offer is paused to protect your cash flow."}
     return {"accepted": True, "product_code": recommendation.product_code, "message": "Your request has been recorded for the demo."}
+
+
+@app.get("/chat/history")
+def chat_history(limit: int = 40, authorization: str | None = Header(default=None), db: Session = Depends(get_db)):
+    """The customer's own conversation, oldest first.
+
+    Every turn was already being persisted as a ChatMessage — and then never
+    read back by anything, so the "conversational assistant" showed exactly one
+    question and one answer at a time and forgot the exchange on any reload.
+    """
+    user = current_user(authorization, db)
+    rows = list(db.scalars(
+        select(ChatMessage).where(ChatMessage.user_id == user.id).order_by(ChatMessage.created_at.desc()).limit(max(1, min(limit, 100)))
+    ))
+    return [{"id": m.id, "role": m.role, "content": m.content, "lang": m.lang, "ts": m.created_at.isoformat()} for m in reversed(rows)]
 
 
 @app.post("/chat")

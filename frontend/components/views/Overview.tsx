@@ -27,10 +27,10 @@ export function Overview({
           <small className="block text-[10px] text-[#a3bcdd]">{copy.lastUpdatedNow}</small>
         </div>
         <div className="flex flex-col gap-2">
-          <button onClick={onAddMoney} className="flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-[#6fa6ea] px-3 py-2.5 text-[11px] text-white hover:bg-white/10">
+          <button onClick={onAddMoney} className="flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-[#6fa6ea] px-3 py-2.5 text-[11px] text-white transition-colors hover:bg-white/15">
             <IndianRupee size={16} /> {copy.addMoney}
           </button>
-          <button onClick={() => onNavigate("Simulator")} className="flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-[#6fa6ea] px-3 py-2.5 text-[11px] text-white hover:bg-white/10">
+          <button onClick={() => onNavigate("Simulator")} className="flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-[#6fa6ea] px-3 py-2.5 text-[11px] text-white transition-colors hover:bg-white/15">
             <ArrowUpRight size={16} /> {copy.simulator}
           </button>
         </div>

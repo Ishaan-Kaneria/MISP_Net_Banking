@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .models import Account, Alert, AuditLog, Recommendation, Transaction, User, UserFeature, UserScore
-from .ml.fraud import BLOCK_THRESHOLD, fraud_score as model_fraud_score
+from .ml.fraud import HARD_BLOCK_THRESHOLD, REVIEW_THRESHOLD, fraud_score as model_fraud_score
 from .ml.segment import predict_segment
 from .rules import fraud_hard_rules, haversine_km, offer_rules
 
@@ -134,10 +134,34 @@ def run_pipeline(db: Session, user_id: str, payload, *, force_post: bool = False
                                       direction=payload.direction)
     fraud_score = round(max(anomaly_score, 0.86 if hard_reasons else 0), 3)
     current_balance = float(account.balance) if account else 0.0
+    # Not having the money is a decline, not a fraud signal, and the two must
+    # not share a code path. INSUFFICIENT_BALANCE used to be appended to
+    # `hard_reasons` -- the fired-fraud-rule list -- which meant a customer
+    # short of funds got a transaction marked "blocked" exactly like a
+    # detected takeover, an alert reading "This payment was blocked for your
+    # protection", that reason written into the fraud audit trail, and a
+    # 14-point hit to their Account Health. That is precisely the punitive,
+    # blunt-flag treatment this project exists to argue against; a bank
+    # declines the payment and tells you your balance is short.
     insufficient_funds = payload.direction == "debit" and float(payload.amount) > current_balance
-    if insufficient_funds:
-        hard_reasons = hard_reasons + ["INSUFFICIENT_BALANCE"]
-    status = "posted" if force_post else ("blocked" if hard_reasons or fraud_score >= BLOCK_THRESHOLD else "posted")
+    # Three-way, not two-way: a hard rule or a high-confidence score refuses the
+    # payment, a middling score asks the customer to confirm it with a one-time
+    # code, and everything else posts. See app/ml/fraud.py for why one cut-off
+    # could not serve both ends.
+    blocked_for_fraud = bool(hard_reasons) or fraud_score >= HARD_BLOCK_THRESHOLD
+    needs_review = not blocked_for_fraud and fraud_score >= REVIEW_THRESHOLD
+    if force_post:
+        status = "posted"
+    elif blocked_for_fraud:
+        # Fraud outranks a decline: if both apply, the customer needs to know
+        # the payment was stopped for safety, not merely for balance.
+        status = "blocked"
+    elif insufficient_funds:
+        status = "declined"
+    elif needs_review:
+        status = "review"
+    else:
+        status = "posted"
     transaction = Transaction(user_id=user_id, amount=payload.amount, direction=payload.direction,
                               payee=payload.payee, mcc=payload.mcc, lat=payload.lat, lng=payload.lng,
                               device_id=payload.device_id, ts=now, category=category, status=status, fraud_score=fraud_score)
@@ -221,11 +245,36 @@ def run_pipeline(db: Session, user_id: str, payload, *, force_post: bool = False
         db.add(alert)
         db.flush()
         alert_ids.append(alert.id)
+    elif status == "review":
+        alert = Alert(user_id=user_id, type="review",
+                     message_en="This payment is waiting for you to confirm it with a one-time code. Nothing has been sent yet.",
+                     message_hi="यह भुगतान आपकी एक बार के कोड से पुष्टि का इंतज़ार कर रहा है। अभी तक कुछ भी नहीं भेजा गया है।",
+                     message_gu="આ ચુકવણી તમારા એક-વખતના કોડથી પુષ્ટિની રાહ જુએ છે. હજી સુધી કંઈ મોકલાયું નથી.")
+        db.add(alert)
+        db.flush()
+        alert_ids.append(alert.id)
+    elif status == "declined":
+        # A separate alert type, with copy that says what actually happened and
+        # what the customer can do about it. Routing this through the "fraud"
+        # alert above told someone who was simply short of money that their own
+        # payment looked like crime.
+        shortfall = float(payload.amount) - current_balance
+        alert = Alert(user_id=user_id, type="balance",
+                     message_en=f"This payment needs ₹{shortfall:,.0f} more than your available balance. Nothing was sent, and no fee was charged.",
+                     message_hi=f"इस भुगतान के लिए आपके उपलब्ध बैलेंस से ₹{shortfall:,.0f} और चाहिए। कुछ भी नहीं भेजा गया, और कोई शुल्क नहीं लिया गया।",
+                     message_gu=f"આ ચુકવણી માટે તમારા ઉપલબ્ધ બેલેન્સ કરતાં ₹{shortfall:,.0f} વધુ જોઈએ. કંઈ મોકલાયું નથી, અને કોઈ ફી લેવાઈ નથી.")
+        db.add(alert)
+        db.flush()
+        alert_ids.append(alert.id)
     if stress:
         has_stress_alert = db.scalar(select(Alert.id).where(Alert.user_id == user_id, Alert.type == "stress"))
         if not has_stress_alert:
             db.add(Alert(user_id=user_id, type="stress", message_hi="आपकी नकदी सुरक्षित रखना हमारी प्राथमिकता है।", message_en="Your cash flow comes first. Grace support is available.", message_gu="તમારો રોકડ પ્રવાહ સુરક્ષિત રાખવો એ અમારી પ્રાથમિકતા છે. ગ્રેસ સહાય ઉપલબ્ધ છે."))
-    db.add(AuditLog(user_id=user_id, transaction_id=transaction.id, action="txn_score", features={"km_from_last": km, "is_night": is_night, "fraud_score": fraud_score, "amount_vs_typical": round(amount_vs_typical, 3), "balance_ratio": round(balance_ratio, 3), "is_new_payee": is_new_payee, "payee_frequency_30d": payee_frequency_30d, "risk_interaction": round(amount_vs_typical * balance_ratio * int(is_new_payee), 3)}, reasons=hard_reasons))
+    db.add(AuditLog(user_id=user_id, transaction_id=transaction.id, action="txn_score", features={"km_from_last": km, "is_night": is_night, "fraud_score": fraud_score, "amount_vs_typical": round(amount_vs_typical, 3), "balance_ratio": round(balance_ratio, 3), "is_new_payee": is_new_payee, "payee_frequency_30d": payee_frequency_30d, "risk_interaction": round(amount_vs_typical * balance_ratio * int(is_new_payee), 3),
+                                                                 # Recorded as a feature, deliberately not as a fired fraud rule:
+                                                                 # the auditor view still explains a decline without the audit
+                                                                 # trail claiming a safety rule caught it.
+                                                                 "insufficient_balance": insufficient_funds}, reasons=hard_reasons))
     db.commit()
     db.refresh(transaction)
     return transaction, alert_ids, hard_reasons

@@ -134,7 +134,7 @@ Every transaction (`POST /txn`) runs through a strict decision order, [documente
    | `WATCHLIST_PAYEE` | payee/MCC on a watchlist, checked in **both** directions |
 
 3. **ML fraud score** — a `RandomForestClassifier` trained on a labeled synthetic transaction set (an `IsolationForest` anomaly model as fallback), adding one signal the hard rules can't: a disproportionately large payment, relative to *this customer's own history*, to a brand-new payee that also drains a large share of their balance — the classic "social-engineering / mule" shape.
-4. **Decision** — hard rule fired *or* score ≥ threshold → **blocked**, money never moves. Otherwise → **posted**, balance updates immediately (row-locked against race conditions under concurrent requests).
+4. **Decision** — three outcomes, not two. A hard rule or a high-confidence score (≥ 0.82) **blocks** outright; an uncertain score (≥ the tuned ~0.43) **holds** the payment for one-time-code confirmation, because a first large payment to a new payee and a social-engineering transfer are the same shape in the data and a bank asks rather than refuses; anything lower **posts**, balance updating immediately (row-locked against race conditions under concurrent requests). A payment the customer simply cannot afford is **declined** — a separate status that is deliberately never treated as a fraud signal.
 5. **Stress detection, not just fraud** — missed-EMI cadence, a negative savings rate, and repeated stress signals set a `stress_flag`. Instead of a declined loan, the customer is offered a **15-day Grace Period** and every credit-shaped offer (personal loans, starter credit) is automatically suppressed — proactive support instead of a punitive flag.
 
 > Try it yourself in the **Safety Simulator** tab (step-up OTP confirmation → live score → plain-language "why").
@@ -258,7 +258,10 @@ HackOut-26/
 |---|---|
 | `POST /auth/login` | Phone + PIN → JWT |
 | `POST /kyc/verify` | Mock DigiLocker consent capture |
-| `POST /txn` | Score & post/block a transaction — the core decision endpoint |
+| `POST /txn` | Score a transaction — posts, holds for confirmation, declines, or blocks |
+| `POST /txn/{id}/confirm` | Release a payment held for step-up confirmation |
+| `GET /kyc/status` | Verification state + the consent record actually retained |
+| `GET /chat/history` | The customer's persisted conversation |
 | `POST /admin/simulate-txn` | Same pipeline, used by the in-app Safety Simulator |
 | `GET /dashboard` | Balance, segment, live features, recent activity, offers, alerts |
 | `GET /offers` · `POST /offers/{id}/accept` | Personalized product recommendations |

@@ -283,7 +283,20 @@ def train() -> dict:
     joblib.dump(fraud_model, MODEL_DIR / "fraud_classifier.joblib")
     joblib.dump(isolation, MODEL_DIR / "iforest.joblib")
     save_json("fraud_feature_schema.json", {"features": list(FRAUD_FEATURES), "model": "RandomForestClassifier", "version": "synthetic-20260912-context-v2"})
-    save_json("fraud_thresholds.json", {"decision_threshold": threshold, "hard_rule_threshold": 0.82})
+    # One threshold, and it is the tuned one. `hard_rule_threshold: 0.82` used
+    # to be written alongside it -- an untuned constant that app/ml/fraud.py
+    # then loaded *instead of* this value, so every reported metric described a
+    # cut-off production did not use. A hard rule doesn't need a threshold of
+    # its own: pipeline.run_pipeline scores a fired rule at 0.86, which clears
+    # any tuned threshold this search can return.
+    # Two bands, both with a stated job (see app/ml/fraud.py): the tuned,
+    # F1-optimal value is where a payment starts needing step-up confirmation,
+    # and the higher one is where it is refused outright. `hard_rule_threshold`
+    # used to sit here as an untuned 0.82 that fraud.py loaded *instead of* the
+    # tuned value, so every reported metric described a cut-off production
+    # never applied.
+    save_json("fraud_thresholds.json", {"decision_threshold": threshold, "hard_block_threshold": 0.82,
+                                       "tuned_on": "held-out validation split, F1-optimal"})
 
     segment_raw, segment_y, _ = segment_frame()
     segment_x = normalize_segment_rows(segment_raw)

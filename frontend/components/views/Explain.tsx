@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import type { Dashboard, Language, TxnExplanation, UserExplanation } from "../../lib/types";
-import { localized } from "../../lib/types";
+import { localized, statusLabel } from "../../lib/types";
 import type { TranslationCopy } from "../../lib/translations";
 import { api, ApiError } from "../../lib/api";
 import { Card } from "../ui";
@@ -69,7 +69,9 @@ export function Explain({ data, copy, language }: { data: Dashboard; copy: Trans
         {data.transactions.map(txn => (
           <div key={txn.id} className="border-b border-border last:border-b-0">
             <button onClick={() => void toggleTxn(txn.id)} className="flex w-full items-center justify-between gap-4 py-3.5 text-left">
-              <span><strong>{txn.payee}</strong><br /><small className="text-muted">{txn.category} · {txn.status} · score {txn.fraud_score}</small></span>
+              {/* `txn.status` is a raw API enum ("review", "declined"); it was
+                  being printed to customers verbatim, untranslated. */}
+              <span><strong>{txn.payee}</strong><br /><small className="text-muted">{txn.category} · {statusLabel(txn.status, copy)} · {copy.fraudScoreLabel.toLowerCase()} {txn.fraud_score}</small></span>
               <ChevronRight size={16} className={`transition-transform ${openTxnId === txn.id ? "rotate-90" : ""}`} />
             </button>
             {openTxnId === txn.id && (
