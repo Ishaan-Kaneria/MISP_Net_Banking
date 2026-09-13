@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🏦 MISP Bank
+# 🏦 MISP
 
 ### AI-Powered Hyper-Personalized Banking for Bharat
 
