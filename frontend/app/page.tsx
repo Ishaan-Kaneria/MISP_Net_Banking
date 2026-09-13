@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, Bell, CircleHelp, LayoutDashboard, MessageCircle, X, Zap } from "lucide-react";
 import { api, ApiError } from "../lib/api";
 import { copyFor } from "../lib/translations";
+import { isLanguage, rememberLanguage, storedLanguage } from "../lib/language";
 import { isView, type Dashboard, type Language, type View } from "../lib/types";
 import { Login } from "../components/Login";
 import { Kyc } from "../components/Kyc";
@@ -83,12 +84,20 @@ function App() {
     setAuthReady(true);
     const token = localStorage.getItem("mispbank_token");
     setAuthToken(token);
+    const chosen = storedLanguage();
+    if (chosen) setLanguage(chosen);
     if (token) void load();
     else setLoading(false);
   }, []);
 
   useEffect(() => {
-    if (data?.user.lang && ["en", "hi", "gu"].includes(data.user.lang)) setLanguage(data.user.lang as Language);
+    // The account's stored language is only a default. A language the customer
+    // picked themselves during onboarding is an explicit choice and must not be
+    // overwritten here -- doing that unconditionally (as this used to) flipped
+    // someone who deliberately chose Gujarati on the sign-in screen straight
+    // back to their account's language the moment the dashboard loaded.
+    if (storedLanguage()) return;
+    if (data?.user.lang && isLanguage(data.user.lang)) setLanguage(data.user.lang);
   }, [data?.user.lang]);
 
   useEffect(() => { document.documentElement.lang = language; }, [language]);
@@ -108,7 +117,7 @@ function App() {
   };
 
   if (!authReady) return <main className="p-10">Preparing your account...</main>;
-  if (!authToken && !data) return <Login onLogin={() => { setAuthToken(localStorage.getItem("mispbank_token")); void load(); }} />;
+  if (!authToken && !data) return <Login language={language} setLanguage={setLanguage} onLogin={() => { setAuthToken(localStorage.getItem("mispbank_token")); void load(); }} />;
   if (loading || !data) {
     return (
       <main className="grid min-h-screen place-items-center gap-2.5 bg-paper p-8 text-center text-navy">
@@ -129,7 +138,11 @@ function App() {
 
   const dashboard = data;
   const copy = copyFor(language);
-  if (dashboard.user.kyc_status !== "verified") return <Kyc onComplete={load} />;
+  // Any language switch the customer makes in-app is remembered the same way
+  // the onboarding one is, so it survives a reload instead of snapping back to
+  // their account default on the next visit.
+  const chooseLanguage = (next: Language) => { setLanguage(next); rememberLanguage(next); };
+  if (dashboard.user.kyc_status !== "verified") return <Kyc language={language} setLanguage={chooseLanguage} onComplete={load} />;
 
   // Was a hardcoded "12 September 2026" that never advanced past the day
   // this screen was first built and never matched the visitor's own
@@ -151,7 +164,12 @@ function App() {
   };
 
   return (
-    <main className="grid min-h-screen grid-cols-1 bg-paper text-ink md:grid-cols-[224px_minmax(0,1fr)_292px]">
+    // The right rail only renders at lg and up, so the third grid track must
+    // appear at lg too. Declaring all three columns at md reserved a 292px
+    // strip for an element that was still `hidden`, leaving the dashboard
+    // itself about 250px wide on every tablet-width viewport (768-1023px)
+    // with a blank column beside it.
+    <main className="grid min-h-screen grid-cols-1 bg-paper text-ink md:grid-cols-[224px_minmax(0,1fr)] lg:grid-cols-[224px_minmax(0,1fr)_292px]">
       {toast && (
         <div role="status" className="fixed right-6 top-5 z-20 flex w-[min(360px,calc(100vw-32px))] animate-pop-in items-start gap-2.5 rounded-lg border border-[#c4d6ef] border-l-4 border-l-primary bg-white p-3.5 shadow-pop">
           <span className="grid h-7 w-7 flex-none place-items-center rounded-full bg-primary-light text-primary"><Bell size={17} /></span>
@@ -175,7 +193,7 @@ function App() {
 
       <section className="min-w-0 bg-paper">
         <Header
-          view={view} viewLabel={viewLabel} copy={copy} language={language} setLanguage={setLanguage}
+          view={view} viewLabel={viewLabel} copy={copy} language={language} setLanguage={chooseLanguage}
           alerts={dashboard.alerts}
         />
         <div className="mx-auto max-w-3xl px-5 pb-20 pt-8 md:px-8">
@@ -199,7 +217,7 @@ function App() {
 
           {view === "Overview" && <Overview data={dashboard} copy={copy} onDetails={() => navigate("Offers")} onAddMoney={() => setShowAddMoney(true)} onNavigate={navigate} />}
           {view === "Offers" && <Offers data={dashboard} copy={copy} />}
-          {view === "Conversation" && <Conversation chat={chat} reply={reply} ask={ask} language={language} setLanguage={setLanguage} copy={copy} />}
+          {view === "Conversation" && <Conversation chat={chat} reply={reply} ask={ask} language={language} setLanguage={chooseLanguage} copy={copy} />}
           {view === "Explain" && <Explain data={dashboard} copy={copy} language={language} />}
           {view === "Simulator" && <Simulator balance={dashboard.balance} deviceId={dashboard.user.device_id} copy={copy} onComplete={refresh} />}
         </div>

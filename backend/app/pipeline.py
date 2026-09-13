@@ -58,6 +58,26 @@ def missed_emi(all_transactions: list[Transaction], now: datetime) -> bool:
     return days_since_last > typical_gap + 15
 
 
+def savings_rate(credits: float, debits: float) -> float:
+    """Share of the last 30 days' inflow that wasn't spent, as a real rate.
+
+    This used to be `(credits - debits) / max(credits, 1)`, whose `max(..., 1)`
+    guard only protects against ZeroDivisionError, not against nonsense: a
+    customer with no salary credit in the window but ₹20,000 of spending scored
+    `-20000.0` instead of a rate. That number then went three places it does
+    real damage -- into the segmentation model as a feature trained on the
+    range [-1, 0.55], into the stress guard, and onto the dashboard, where the
+    Overview tile renders `savings_rate * 100` and printed "-2,000,000%".
+
+    No inflow at all is a full-depth negative rate (-1.0), not an unbounded
+    one, and the result is clamped into the range the model was trained on so
+    an extreme month can't push the feature outside its training distribution.
+    """
+    if credits <= 0:
+        return -1.0 if debits > 0 else 0.0
+    return round(max(-1.0, min(1.0, (credits - debits) / credits)), 3)
+
+
 def run_pipeline(db: Session, user_id: str, payload, *, force_post: bool = False) -> tuple[Transaction, list[str], list[str]]:
     """`force_post` is for money that has already been verified and captured
     by an external, already-KYC'd payment gateway (e.g. a Razorpay top-up
@@ -142,7 +162,7 @@ def run_pipeline(db: Session, user_id: str, payload, *, force_post: bool = False
     spend_7d = sum(float(t.amount) for t in behavioral if t.direction == "debit" and comparable_time(t.ts) >= now - timedelta(days=7))
     feature = db.get(UserFeature, user_id) or UserFeature(user_id=user_id)
     feature.spend_7d, feature.spend_30d = Decimal(str(spend_7d)), Decimal(str(debits))
-    feature.savings_rate = round((credits - debits) / max(credits, 1), 3)
+    feature.savings_rate = savings_rate(credits, debits)
     feature.salary_amt = Decimal(str(max([float(t.amount) for t in recent if t.category == "SALARY"] or [0])))
     feature.emi_count = sum(t.category == "EMI" for t in recent)
     # Localize to IST before checking the hour -- t.ts is stored in UTC, and
@@ -161,10 +181,21 @@ def run_pipeline(db: Session, user_id: str, payload, *, force_post: bool = False
     elif category == "SALARY" and not history:
         segment = "FIRST_JOB"
     else:
+        # `velocity` is the customer's 30-day transaction count, the same
+        # quantity scripts/train_models.py generates (0-40) and the same one
+        # ML_MODEL_README documents for the HIGH_VELOCITY guard ("more than 15
+        # transactions"). This used to pass `len(recent_debits)` -- the
+        # *2-minute* burst counter built above for the fraud rules -- so the
+        # segmentation model received a number that is 0-2 in practice where
+        # its training data ranged over 0-40, and the `velocity > 15` guard
+        # could never fire at all: 5 debits inside 2 minutes is already a hard
+        # block (VELOCITY_5_DEBITS_2M), so the counter can't even reach 5,
+        # let alone 16. HIGH_VELOCITY was reachable only through its
+        # unique-payees arm.
         segment = predict_segment(spend_30d=debits, savings_rate=feature.savings_rate,
                                   missed_emi=feature.missed_emi_30d, hospital_spend=sum(float(t.amount) for t in recent if t.category == "HOSPITAL"),
                                   unique_payees=feature.unique_payees_7d, salary_amount=float(feature.salary_amt),
-                                  velocity=len(recent_debits), entertainment_spend=sum(float(t.amount) for t in recent if t.category == "ENTERTAINMENT"))
+                                  velocity=len(behavioral), entertainment_spend=sum(float(t.amount) for t in recent if t.category == "ENTERTAINMENT"))
     stress = segment == "STRESS" or feature.missed_emi_30d > 0
     score = db.get(UserScore, user_id) or UserScore(user_id=user_id)
     score.fraud_score, score.segment, score.life_stage, score.stress_flag = fraud_score, segment, segment, stress

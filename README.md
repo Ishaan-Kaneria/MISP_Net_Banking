@@ -13,7 +13,6 @@
 [![Next.js](https://img.shields.io/badge/Next.js-14-000000?logo=nextdotjs&logoColor=white)](frontend/package.json)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)](frontend/package.json)
 [![scikit--learn](https://img.shields.io/badge/scikit--learn-1.6-F7931E?logo=scikitlearn&logoColor=white)](backend/requirements.txt)
-[![XGBoost](https://img.shields.io/badge/XGBoost-2.1-006400)](backend/requirements.txt)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon-4169E1?logo=postgresql&logoColor=white)](backend/app/db.py)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -81,7 +80,7 @@ flowchart LR
         PIPE["Transaction Pipeline<br/>(app/pipeline.py)"]
         RULES["Hard Fraud Rules<br/>(explainable, non-ML)"]
         FRAUD["Fraud Classifier<br/>RandomForest + IsolationForest"]
-        SEG["Segmentation Model<br/>HistGradientBoosting / XGBoost"]
+        SEG["Segmentation<br/>Guards + HistGradientBoosting"]
         OFFERS["Offer Rules Engine<br/>19 product rules"]
         CHAT["Chat Layer<br/>RAG retrieval + Gemini + ethics gate"]
     end
@@ -142,15 +141,25 @@ Every transaction (`POST /txn`) runs through a strict decision order, [documente
 
 ### 🎁 2. Personalization Engine
 
-Every posted transaction updates a rolling feature set — 7-day/30-day spend, savings rate, EMI count, night-transaction ratio, unique payees, salary size — which a **behavioral segmentation model** (`HistGradientBoostingClassifier` in training, `XGBoost` at inference, with deterministic safety overrides) maps to one of **7 life-stage segments**:
+Every posted transaction updates a rolling feature set — 7-day/30-day spend, savings rate, EMI count, night-transaction ratio, unique payees, salary size — which a two-stage **behavioral segmentation pipeline** maps to one of **7 life-stage segments**:
 
 `FIRST_JOB` · `MARRIAGE` · `MEDICAL` · `STRESS` · `SAVER` · `HIGH_VELOCITY` · `BASELINE`
+
+The two stages own **disjoint** sets of those labels, which is what keeps the safety guarantee honest:
+
+| Stage | Decides | Why |
+|---|---|---|
+| Deterministic guards (`deterministic_segment`) | `STRESS` · `MEDICAL` · `HIGH_VELOCITY` · `SAVER` | These encode policy — real financial stress must never be classifiable away by a model |
+| Trained classifier (`HistGradientBoostingClassifier`) | `FIRST_JOB` · `MARRIAGE` · `BASELINE` | The genuinely ambiguous life stages, where a probabilistic call is appropriate |
+
+Because the split is disjoint, the classifier is trained and evaluated *only* on the region it actually serves, and the reported metric is for the full pipeline end to end — see [`ML_MODEL_README.md`](backend/ML_MODEL_README.md) for the train/serve-skew bug this fixed.
 
 A **19-rule offer engine** (`app/rules.py::offer_rules`) then combines segment + live behavior into concrete products — investment SIPs, fixed deposits, ELSS tax-saving funds, gold savings plans, EMI protection, autopay bundles, night-security locks — never a generic banner. Every credit-shaped offer is automatically withheld the moment stress is detected (see below).
 
 ### 💬 3. Vernacular Conversational Assistant
 
-- **Onboarding** — a single mock DigiLocker-style KYC step (PAN/Aadhaar type + consent), not a multi-screen form.
+- **Vernacular from the first screen, not just in chat** — the language picker is on the **sign-in** screen, before any English is required: every option is written in its own script (English · हिंदी · ગુજરાતી) so it can be recognised without reading English at all. The choice carries through KYC and into the dashboard, and is remembered on the device — an explicit choice always beats the account's stored default.
+- **Onboarding** — a single mock DigiLocker-style KYC step (PAN/Aadhaar type + consent), not a multi-screen form, with the consent text itself rendered in the chosen language. The `locale` written into the consent record is the language the customer actually read, since a consent record that misstates that proves nothing.
 - **Chat assistant** — answers balance, offers, and activity questions natively in **English, Hindi (Devanagari), and Gujarati**, backed by a lightweight retrieval layer over the bank's own policy documents plus an optional live Gemini model for open-ended questions — with every reply passing through the same ethics gate as the transaction engine (a stressed user asking for "a loan" gets grace-period support, never a credit pitch).
 
 ---
@@ -186,7 +195,6 @@ Built directly against the problem statement's own judging criteria:
 - **SQLAlchemy 2.0** + **Alembic** — ORM & migrations
 - **PostgreSQL** (Neon, serverless) in production · **SQLite** for local dev/tests
 - **scikit-learn** — `RandomForestClassifier`, `HistGradientBoostingClassifier`, `IsolationForest`
-- **XGBoost** — segmentation inference fallback
 - **passlib[bcrypt]** + **python-jose** — PIN hashing & JWT auth
 - **httpx** — Gemini LLM + Razorpay REST calls
 - **pytest** — test suite

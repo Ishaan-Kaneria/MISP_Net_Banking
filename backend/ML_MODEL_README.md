@@ -68,6 +68,55 @@ Hard-rule thresholds remain explicit:
 
 ## Customer Segmentation
 
+### Guards and model own different segments
+
+Segmentation runs in two stages, and each stage owns a disjoint set of labels:
+
+- `deterministic_segment()` in `app/ml/segment.py` decides `STRESS`, `MEDICAL`,
+  `HIGH_VELOCITY`, and `SAVER`. These encode policy, so a probabilistic model
+  must never be able to talk the bank out of one.
+- The trained classifier decides only what the guards leave open:
+  `FIRST_JOB`, `MARRIAGE`, `BASELINE` — its entire label space
+  (`MODEL_SEGMENTS`), and the label space written to
+  `segment_label_mapping.json`.
+
+### Known fix: the classifier was trained on a boundary it never sees (2026-09)
+
+`scripts/train_models.py` used to generate rows across all seven labels and fit
+the classifier on every one of them. Because the guards intercept four of those
+seven, **96% of the training rows described customers the model is never
+consulted about, and 70% of those intercepted rows carried a label that
+contradicted the guard that would actually decide them.** For the region it does
+serve, the model was left with only 16 genuine `FIRST_JOB` and 61 genuine
+`MARRIAGE` examples out of 4,200 rows.
+
+Two feature bugs compounded it:
+
+- `pipeline.run_pipeline` passed its **2-minute debit burst counter** as
+  `velocity`, a feature trained over a 30-day transaction count of 0–40. In
+  production that number is 0–2, because 5 debits inside 2 minutes is already a
+  hard fraud block — so the `velocity > 15` guard could never fire, and the
+  model received a constant out-of-range value. `HIGH_VELOCITY` was reachable
+  only through its unique-payees arm.
+- `savings_rate` was `(credits - debits) / max(credits, 1)`, which returns
+  `-20000.0` rather than a rate for a customer with spending but no inflow in
+  the window — far outside the `[-1, 0.55]` range the model is trained on.
+
+Live effect: seeded personas drifted off their own life stage as soon as a real
+transaction was scored — `MARRIAGE` → `BASELINE`, `BASELINE` → `FIRST_JOB` — and
+lost the segment-specific offers that go with it. Only 4 of the 7 demo personas
+still classified correctly after one transaction.
+
+Fixed by making the guard function the single source of truth for both stages:
+the trainer now rejection-samples the three model-served labels until each row
+genuinely clears every guard, generates the four guarded labels so each
+genuinely trips its own guard, trains the classifier on the served region only,
+and additionally reports a **full-pipeline** metric (guards + model, end to end)
+alongside the model-only one. The training frame now contains **zero
+label/guard contradictions**, and all 7 personas hold their segment.
+
+### Features
+
 The segment model uses normalized behavioral aggregates:
 
 - 30-day spend
@@ -83,10 +132,15 @@ Strong signals are deterministic guardrails before the classifier:
 
 - Missed EMI or savings rate below -15%: `STRESS`.
 - Hospital spending above INR 10,000: `MEDICAL`.
-- More than 15 transactions or payees: `HIGH_VELOCITY`.
+- More than 15 transactions (30-day count) or payees: `HIGH_VELOCITY`.
 - Savings rate above 20% with controlled spend: `SAVER`.
 
 The classifier handles ambiguous profiles after these safety and behavior checks. Credit-related recommendations are independently blocked when stress is detected.
+
+Note that `SAVER` requires *both* a savings rate above 20% and spend below 80%
+of salary, so a customer can save a large share of their inflow and still be
+left to the classifier. That region has to be genuinely represented in the
+training frame; it previously was not (see the known fix above).
 
 ## Training and Evaluation
 
@@ -106,14 +160,38 @@ The trainer:
 - Saves artifacts under `app/ml/models/`.
 - Saves metrics under `data/synthetic/reports/metrics.json`.
 
-Current synthetic holdout metrics after the contextual feature update:
+Current synthetic holdout metrics, reproduced from a clean run of
+`scripts/train_models.py` on the pinned dependency set and matching
+`data/synthetic/reports/metrics.json` exactly:
 
-- Fraud precision: approximately 0.979
-- Fraud recall: approximately 0.677
-- Fraud F1: approximately 0.801
-- Fraud PR-AUC: approximately 0.721
-- Fraud ROC-AUC: approximately 0.835
-- Segmentation macro-F1: approximately 0.790
+| Metric | Value |
+|---|---|
+| Fraud precision | 0.978 |
+| Fraud recall | 0.630 |
+| Fraud F1 | 0.766 |
+| Fraud PR-AUC | 0.680 |
+| Fraud ROC-AUC | 0.810 |
+| Fraud decision threshold (tuned on validation) | 0.43 |
+| Segmentation — **full pipeline** macro-F1 (guards + model) | 0.985 |
+| Segmentation — model-only macro-F1 (its served region) | 0.964 |
+
+The previous revision of this file published fraud recall 0.677, F1 0.801,
+PR-AUC 0.721, and ROC-AUC 0.835, and a segmentation macro-F1 of 0.790. **None of
+those numbers reproduced from this repository.** The fraud figures were stale —
+the committed `metrics.json` and a byte-identical retrain of the committed
+artifact both give the table above — and the 0.790 segmentation figure measured
+a seven-class problem the shipped classifier is never asked to solve (see the
+known fix above). Published model performance that cannot be reproduced from
+the code and artifacts in the repository is a governance problem in its own
+right, independent of whether the numbers are good.
+
+Read the segmentation figures with the right caveat: the two stages are now
+measured for what they actually do, but the synthetic customers are generated
+from per-segment rules, so they are close to separable by construction. The
+honest claim is "the pipeline implements its stated policy consistently", not
+"segmentation is 98% accurate on real customers". The fraud figures are the more
+informative pair, and recall of 0.63 at precision 0.98 is the real trade-off the
+tuned threshold currently strikes.
 
 Synthetic metrics are useful for regression checks, not proof of production performance. A real deployment requires representative labeled data, time-based validation, calibration, fairness review, monitoring, and human governance.
 

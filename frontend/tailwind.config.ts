@@ -4,6 +4,15 @@ export default {
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
   theme: {
     extend: {
+      // Tailwind's default spacing scale jumps 4 -> 5 -> 6, with no half steps
+      // above 3.5. The UI uses `p-4.5` / `px-5.5` / `py-4.5` in seven places
+      // and pairs them with arbitrary `p-[18px]` / `p-[22px]` values
+      // elsewhere, so the design system really does want an 18px and a 22px
+      // step -- but without these entries those seven classes matched nothing
+      // and Tailwind emitted no rule at all, silently dropping the padding and
+      // margin they were meant to apply (the rail, for instance, rendered with
+      // no horizontal padding at all).
+      spacing: { "4.5": "18px", "5.5": "22px" },
       colors: {
         ink: "#0f1729",
         muted: "#5b6b83",

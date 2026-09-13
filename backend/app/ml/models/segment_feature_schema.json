@@ -9,6 +9,16 @@
     "velocity",
     "entertainment_spend"
   ],
+  "scales": {
+    "spend_30d": 50000,
+    "savings_rate": 1,
+    "missed_emi": 1,
+    "hospital_spend": 20000,
+    "unique_payees": 20,
+    "salary_amount": 50000,
+    "velocity": 20,
+    "entertainment_spend": 20000
+  },
   "normalization": "backend-compatible scaling",
-  "version": "synthetic-20260912"
+  "version": "synthetic-20260913-guarded-v2"
 }
