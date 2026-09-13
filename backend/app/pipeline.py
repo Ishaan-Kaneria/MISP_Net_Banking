@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from .models import Account, Alert, AuditLog, Recommendation, Transaction, User, UserFeature, UserScore
 from .ml.fraud import HARD_BLOCK_THRESHOLD, REVIEW_THRESHOLD, fraud_score as model_fraud_score
 from .ml.segment import predict_segment
-from .rules import fraud_hard_rules, haversine_km, offer_rules
+from .rules import CREDIT_SHAPED_OFFERS, fraud_hard_rules, haversine_km, offer_rules
 
 CATEGORIES = {
     "salary": "SALARY", "hospital": "HOSPITAL", "apollo": "HOSPITAL", "grocery": "UPI_GROCERY",
@@ -78,7 +78,7 @@ def savings_rate(credits: float, debits: float) -> float:
     return round(max(-1.0, min(1.0, (credits - debits) / credits)), 3)
 
 
-def sync_recommendations(db: Session, user_id: str, recommendations: list[tuple[str, str, bool]]) -> None:
+def sync_recommendations(db: Session, user_id: str, recommendations: list[tuple[str, str, bool]], *, stress_flag: bool = False) -> None:
     """Upsert an offer set for a customer, keyed by product code.
 
     Extracted from run_pipeline so `app/seed.py` can derive a persona's opening
@@ -87,6 +87,17 @@ def sync_recommendations(db: Session, user_id: str, recommendations: list[tuple[
     *new* transaction — so a customer with nine months of history who had not
     yet paid anyone since signing in saw an empty Recommendations page, and the
     personalization engine appeared to have nothing to say about them.
+
+    `stress_flag` re-applies the ethics gate across *every* credit-shaped offer
+    the customer already holds, not just the ones whose rule fires this time.
+    Without that sweep the gate leaked: an offer is only revisited here when its
+    rule fires again, so a credit product surfaced while the customer was
+    healthy kept `blocked_by_ethics = False` permanently once its rule stopped
+    firing. A customer who spent heavily on a wedding, tipped into STRESS, and
+    thereby left the MARRIAGE segment kept being offered the wedding EMI plan
+    and EMI conversion -- both credit -- at the exact moment the system had
+    decided they were under financial stress, while the pitch claims a stress
+    signal suppresses every credit-shaped offer.
     """
     existing = {item.product_code: item for item in db.scalars(select(Recommendation).where(Recommendation.user_id == user_id))}
     for code, reason, blocked in recommendations:
@@ -99,6 +110,91 @@ def sync_recommendations(db: Session, user_id: str, recommendations: list[tuple[
             created = Recommendation(user_id=user_id, product_code=code, reason=reason, blocked_by_ethics=blocked)
             db.add(created)
             existing[code] = created
+    for code, row in existing.items():
+        if code in CREDIT_SHAPED_OFFERS and row.blocked_by_ethics != stress_flag:
+            row.blocked_by_ethics = stress_flag
+            db.add(row)
+
+
+def refresh_behavioural_profile(db: Session, user_id: str, *, now: datetime, category: str, amount: float,
+                               current_balance: float, fraud_score: float | None = None) -> tuple[str, bool]:
+    """Recompute a customer's rolling features, life-stage segment and offers
+    from whatever is currently posted on their account.
+
+    Shared by `run_pipeline` and `main.confirm_transaction` so that releasing a
+    held payment updates the customer's profile the same way scoring one does.
+    It previously did not: confirming moved the money and stopped there, so a
+    large payment released through step-up left the segment, the savings rate
+    and the whole offer set frozen at their pre-payment values until some
+    *other* transaction happened to trigger a recompute. A customer could
+    confirm a payment that took them into financial stress and still be shown
+    their old segment and their old credit offers.
+
+    Returns the resulting (segment, stress_flag).
+    """
+    all_transactions = list(db.scalars(select(Transaction).where(Transaction.user_id == user_id).order_by(Transaction.ts.desc()).limit(100)))
+    prior_count = max(len(all_transactions) - 1, 0)
+    cutoff = now - timedelta(days=30)
+    recent = [t for t in all_transactions if comparable_time(t.ts) >= cutoff and t.status == "posted"]
+    # TOPUP (a Razorpay Add Money credit) is the user moving their own money
+    # into the account, not income -- counting it as "credits" here let a
+    # single top-up dominate savings_rate (e.g. add ₹50,000 with almost no
+    # other activity and the ratio reads as ~80% "savings", which then
+    # qualifies for SAVER-style investment offers moments after being
+    # overdrawn). Excluded from both sides so a top-up moves the balance
+    # (still handled above) without distorting the behavior signals at all.
+    behavioral = [t for t in recent if t.category != "TOPUP"]
+    debits = sum(float(t.amount) for t in behavioral if t.direction == "debit")
+    credits = sum(float(t.amount) for t in behavioral if t.direction == "credit")
+    spend_7d = sum(float(t.amount) for t in behavioral if t.direction == "debit" and comparable_time(t.ts) >= now - timedelta(days=7))
+    feature = db.get(UserFeature, user_id) or UserFeature(user_id=user_id)
+    feature.spend_7d, feature.spend_30d = Decimal(str(spend_7d)), Decimal(str(debits))
+    feature.savings_rate = savings_rate(credits, debits)
+    feature.salary_amt = Decimal(str(max([float(t.amount) for t in recent if t.category == "SALARY"] or [0])))
+    feature.emi_count = sum(t.category == "EMI" for t in recent)
+    # Localize to IST before checking the hour -- t.ts is stored in UTC, and
+    # comparing its raw .hour directly (as this used to) checks against UTC
+    # nighttime, not the user's actual local nighttime. is_night above
+    # already gets this right for the transaction just posted; this brings
+    # the same 30-day feature in line with it.
+    feature.night_txn_ratio = sum((comparable_time(t.ts).astimezone(ZoneInfo("Asia/Kolkata")).hour >= 22 or comparable_time(t.ts).astimezone(ZoneInfo("Asia/Kolkata")).hour < 5) for t in recent) / max(len(recent), 1)
+    feature.unique_payees_7d = len({t.payee for t in recent if comparable_time(t.ts) >= now - timedelta(days=7)})
+    feature.missed_emi_30d = 1 if missed_emi(all_transactions, now) else 0
+    db.add(feature)
+    if feature.missed_emi_30d or feature.savings_rate < -0.15:
+        segment = "STRESS"
+    elif category == "HOSPITAL":
+        segment = "MEDICAL"
+    elif category == "SALARY" and prior_count == 0:
+        segment = "FIRST_JOB"
+    else:
+        # `velocity` is the customer's 30-day transaction count, the same
+        # quantity scripts/train_models.py generates (0-40) and the same one
+        # ML_MODEL_README documents for the HIGH_VELOCITY guard ("more than 15
+        # transactions"). This used to pass `len(recent_debits)` -- the
+        # *2-minute* burst counter built above for the fraud rules -- so the
+        # segmentation model received a number that is 0-2 in practice where
+        # its training data ranged over 0-40, and the `velocity > 15` guard
+        # could never fire at all: 5 debits inside 2 minutes is already a hard
+        # block (VELOCITY_5_DEBITS_2M), so the counter can't even reach 5,
+        # let alone 16. HIGH_VELOCITY was reachable only through its
+        # unique-payees arm.
+        segment = predict_segment(spend_30d=debits, savings_rate=feature.savings_rate,
+                                  missed_emi=feature.missed_emi_30d, hospital_spend=sum(float(t.amount) for t in recent if t.category == "HOSPITAL"),
+                                  unique_payees=feature.unique_payees_7d, salary_amount=float(feature.salary_amt),
+                                  velocity=len(behavioral), entertainment_spend=sum(float(t.amount) for t in recent if t.category == "ENTERTAINMENT"))
+    stress = segment == "STRESS" or feature.missed_emi_30d > 0
+    score = db.get(UserScore, user_id) or UserScore(user_id=user_id)
+    if fraud_score is not None:
+        score.fraud_score = fraud_score
+    score.segment, score.life_stage, score.stress_flag = segment, segment, stress
+    db.add(score)
+    recommendations = offer_rules(category, segment, stress, amount, debits,
+                                  savings_rate=feature.savings_rate, salary_amt=float(feature.salary_amt),
+                                  emi_count=feature.emi_count, night_txn_ratio=feature.night_txn_ratio,
+                                  unique_payees_7d=feature.unique_payees_7d, balance=current_balance)
+    sync_recommendations(db, user_id, recommendations, stress_flag=stress)
+    return segment, stress
 
 
 def run_pipeline(db: Session, user_id: str, payload, *, force_post: bool = False) -> tuple[Transaction, list[str], list[str]]:
@@ -203,65 +299,9 @@ def run_pipeline(db: Session, user_id: str, payload, *, force_post: bool = False
     if status == "posted":
         if account:
             account.balance += payload.amount if payload.direction == "credit" else -payload.amount
-    all_transactions = history + [transaction]
-    cutoff = now - timedelta(days=30)
-    recent = [t for t in all_transactions if comparable_time(t.ts) >= cutoff and t.status == "posted"]
-    # TOPUP (a Razorpay Add Money credit) is the user moving their own money
-    # into the account, not income -- counting it as "credits" here let a
-    # single top-up dominate savings_rate (e.g. add ₹50,000 with almost no
-    # other activity and the ratio reads as ~80% "savings", which then
-    # qualifies for SAVER-style investment offers moments after being
-    # overdrawn). Excluded from both sides so a top-up moves the balance
-    # (still handled above) without distorting the behavior signals at all.
-    behavioral = [t for t in recent if t.category != "TOPUP"]
-    debits = sum(float(t.amount) for t in behavioral if t.direction == "debit")
-    credits = sum(float(t.amount) for t in behavioral if t.direction == "credit")
-    spend_7d = sum(float(t.amount) for t in behavioral if t.direction == "debit" and comparable_time(t.ts) >= now - timedelta(days=7))
-    feature = db.get(UserFeature, user_id) or UserFeature(user_id=user_id)
-    feature.spend_7d, feature.spend_30d = Decimal(str(spend_7d)), Decimal(str(debits))
-    feature.savings_rate = savings_rate(credits, debits)
-    feature.salary_amt = Decimal(str(max([float(t.amount) for t in recent if t.category == "SALARY"] or [0])))
-    feature.emi_count = sum(t.category == "EMI" for t in recent)
-    # Localize to IST before checking the hour -- t.ts is stored in UTC, and
-    # comparing its raw .hour directly (as this used to) checks against UTC
-    # nighttime, not the user's actual local nighttime. is_night above
-    # already gets this right for the transaction just posted; this brings
-    # the same 30-day feature in line with it.
-    feature.night_txn_ratio = sum((comparable_time(t.ts).astimezone(ZoneInfo("Asia/Kolkata")).hour >= 22 or comparable_time(t.ts).astimezone(ZoneInfo("Asia/Kolkata")).hour < 5) for t in recent) / max(len(recent), 1)
-    feature.unique_payees_7d = len({t.payee for t in recent if comparable_time(t.ts) >= now - timedelta(days=7)})
-    feature.missed_emi_30d = 1 if missed_emi(all_transactions, now) else 0
-    db.add(feature)
-    if feature.missed_emi_30d or feature.savings_rate < -0.15:
-        segment = "STRESS"
-    elif category == "HOSPITAL":
-        segment = "MEDICAL"
-    elif category == "SALARY" and not history:
-        segment = "FIRST_JOB"
-    else:
-        # `velocity` is the customer's 30-day transaction count, the same
-        # quantity scripts/train_models.py generates (0-40) and the same one
-        # ML_MODEL_README documents for the HIGH_VELOCITY guard ("more than 15
-        # transactions"). This used to pass `len(recent_debits)` -- the
-        # *2-minute* burst counter built above for the fraud rules -- so the
-        # segmentation model received a number that is 0-2 in practice where
-        # its training data ranged over 0-40, and the `velocity > 15` guard
-        # could never fire at all: 5 debits inside 2 minutes is already a hard
-        # block (VELOCITY_5_DEBITS_2M), so the counter can't even reach 5,
-        # let alone 16. HIGH_VELOCITY was reachable only through its
-        # unique-payees arm.
-        segment = predict_segment(spend_30d=debits, savings_rate=feature.savings_rate,
-                                  missed_emi=feature.missed_emi_30d, hospital_spend=sum(float(t.amount) for t in recent if t.category == "HOSPITAL"),
-                                  unique_payees=feature.unique_payees_7d, salary_amount=float(feature.salary_amt),
-                                  velocity=len(behavioral), entertainment_spend=sum(float(t.amount) for t in recent if t.category == "ENTERTAINMENT"))
-    stress = segment == "STRESS" or feature.missed_emi_30d > 0
-    score = db.get(UserScore, user_id) or UserScore(user_id=user_id)
-    score.fraud_score, score.segment, score.life_stage, score.stress_flag = fraud_score, segment, segment, stress
-    db.add(score)
-    recommendations = offer_rules(category, segment, stress, float(payload.amount), debits,
-                                  savings_rate=feature.savings_rate, salary_amt=float(feature.salary_amt),
-                                  emi_count=feature.emi_count, night_txn_ratio=feature.night_txn_ratio,
-                                  unique_payees_7d=feature.unique_payees_7d, balance=current_balance)
-    sync_recommendations(db, user_id, recommendations)
+    segment, stress = refresh_behavioural_profile(
+        db, user_id, now=now, category=category, amount=float(payload.amount),
+        current_balance=current_balance, fraud_score=fraud_score)
     alert_ids = []
     if status == "blocked":
         alert = Alert(user_id=user_id, type="fraud", message_hi="यह भुगतान सुरक्षा कारणों से रोक दिया गया है।", message_en="This payment was blocked for your protection.", message_gu="આ ચુકવણી સુરક્ષા કારણોસર રોકવામાં આવી છે.")

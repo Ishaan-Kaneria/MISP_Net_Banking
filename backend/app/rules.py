@@ -38,6 +38,13 @@ def fraud_hard_rules(*, amount: float, km_from_last: float, same_device: bool, t
     return reasons
 
 
+# Every offer that extends credit in some form. The ethics gate is defined by
+# membership of this set, not by which rule happened to fire on the current
+# transaction -- see pipeline.sync_recommendations for why that distinction is
+# what makes the gate actually hold.
+CREDIT_SHAPED_OFFERS = frozenset({"PERSONAL_LOAN", "STARTER_CREDIT", "WEDDING_EMI_PLAN", "EMI_CONVERT", "CASHBACK_CARD"})
+
+
 def offer_rules(category: str, segment: str, stress_flag: bool, amount: float, spend_30d: float, *,
                savings_rate: float = 0.0, salary_amt: float = 0.0, emi_count: int = 0,
                night_txn_ratio: float = 0.0, unique_payees_7d: int = 0, balance: float = 0.0) -> list[tuple[str, str, bool]]:

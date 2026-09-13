@@ -11,7 +11,7 @@ from .llm import generate_reply_with_status, normalize_language
 from .models import Account, Alert, AuditLog, ChatMessage, KycEvent, Recommendation, Transaction, User, UserFeature, UserScore, WalletTopup
 from .payments import RazorpayError, create_order, is_configured as razorpay_is_configured, verify_payment_signature
 from .rag.retrieve import retrieve
-from .pipeline import run_pipeline
+from .pipeline import refresh_behavioural_profile, run_pipeline
 from .schemas import ChatRequest, HealthResponse, KycRequest, LoginRequest, TransactionRequest, TransactionResponse, WalletTopupOrderRequest, WalletTopupVerifyRequest
 from .security import create_token, decode_token, hash_pin, verify_pin
 from .seed import seed
@@ -153,6 +153,14 @@ def confirm_transaction(transaction_id: str, authorization: str | None = Header(
         account.balance += transaction.amount if transaction.direction == "credit" else -transaction.amount
     db.add(AuditLog(user_id=user.id, transaction_id=transaction.id, action="txn_step_up_confirmed",
                    features={"fraud_score": transaction.fraud_score}, reasons=["STEP_UP_CONFIRMED"]))
+    # Releasing a held payment changes the customer's behaviour as much as
+    # scoring one does, so their features, segment and offers are recomputed
+    # here too. Without this the money moved and nothing else did: a payment
+    # large enough to tip someone into financial stress left them looking at a
+    # stale segment and their old credit offers until some later transaction
+    # happened to trigger a recompute.
+    refresh_behavioural_profile(db, user.id, now=datetime.now(timezone.utc), category=transaction.category,
+                                amount=float(transaction.amount), current_balance=float(account.balance) if account else 0.0)
     db.commit()
     db.refresh(transaction)
     return TransactionResponse(id=transaction.id, status=transaction.status, fraud_score=transaction.fraud_score,

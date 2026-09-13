@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 from app.ml.fraud import HARD_BLOCK_THRESHOLD, REVIEW_THRESHOLD
 from app.ml.segment import SEGMENTS
-from app.rules import fraud_hard_rules, haversine_km
+from app.rules import CREDIT_SHAPED_OFFERS, fraud_hard_rules, haversine_km
 
 warnings.filterwarnings("ignore")
 
@@ -165,3 +165,30 @@ def test_blocked_attempt_does_not_become_the_next_geo_baseline(client, auth):
     # Same city as the persona's real history, immediately afterwards.
     genuine = pay(client, auth, amount=16000, payee="Monthly Rent", lat=22.5726, lng=88.3639)
     assert "GEO_JUMP_HIGH_VALUE" not in genuine["fired_rules"]
+
+
+def test_stress_pauses_credit_offers_the_customer_already_held(client, auth):
+    """The ethics gate must cover every credit-shaped offer a customer holds,
+    not only the ones whose rule happens to fire on the current transaction.
+
+    Offers were revisited only when their own rule fired again, so a credit
+    product surfaced while the customer was healthy kept blocked_by_ethics=False
+    forever once that rule stopped firing. Fatima is the case that exposes it:
+    she spends heavily on her wedding, tips into STRESS, and *leaves* the
+    MARRIAGE segment — so the wedding EMI plan's rule stops firing and the plan
+    stayed on offer at the exact moment the system decided she was stressed.
+    """
+    auth = auth("9000000005")
+    before = client.get("/dashboard", headers=auth).json()
+    assert before["segment"] == "MARRIAGE"
+    assert "WEDDING_EMI_PLAN" in {o["product_code"] for o in before["offers"]}
+
+    held = pay(client, auth, amount=30000, payee="Sharma Jewellers", lat=28.61, lng=77.20)
+    assert held["status"] == "review"
+    client.post(f"/txn/{held['id']}/confirm", headers=auth)
+
+    after = client.get("/dashboard", headers=auth).json()
+    assert after["stress_flag"] is True, "heavy wedding spend should trip the stress signal"
+    live_credit = [o["product_code"] for o in client.get("/offers", headers=auth).json()
+                   if o["product_code"] in CREDIT_SHAPED_OFFERS and not o["blocked_by_ethics"]]
+    assert live_credit == [], f"credit still on offer to a stressed customer: {live_credit}"

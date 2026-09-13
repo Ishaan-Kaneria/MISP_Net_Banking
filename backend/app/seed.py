@@ -365,7 +365,7 @@ def seed() -> None:
                 savings_rate=features["savings_rate"], salary_amt=float(features["salary_amt"]),
                 emi_count=features["emi_count"], night_txn_ratio=0.0,
                 unique_payees_7d=0, balance=float(balance),
-            ))
+            ), stress_flag=segment == "STRESS")
         db.commit()
 
 
