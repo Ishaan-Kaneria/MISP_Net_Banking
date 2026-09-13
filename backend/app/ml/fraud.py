@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import numpy as np
@@ -8,6 +9,11 @@ FEATURE_NAMES = ("amount", "log_amount", "hour", "is_night", "km_from_last", "sa
 MODEL_PATH = Path(__file__).parent / "models" / "iforest.joblib"
 CLASSIFIER_PATH = Path(__file__).parent / "models" / "fraud_classifier.joblib"
 THRESHOLD_PATH = Path(__file__).parent / "models" / "fraud_thresholds.json"
+# Fallback used only when train_models.py has never been run against this
+# checkout (no fraud_thresholds.json on disk yet) -- matches the value the
+# training script itself writes as "hard_rule_threshold", so behavior is
+# unchanged wherever the file exists.
+DEFAULT_BLOCK_THRESHOLD = 0.82
 
 
 def _normal_training_data() -> np.ndarray:
@@ -25,6 +31,14 @@ def _model() -> IsolationForest:
 
 _FRAUD_MODEL = joblib.load(MODEL_PATH) if MODEL_PATH.exists() else _model()
 _FRAUD_CLASSIFIER = joblib.load(CLASSIFIER_PATH) if CLASSIFIER_PATH.exists() else None
+# This file used to be written by train_models.py and never read anywhere --
+# a genuine F1-optimal threshold (0.52) was tuned on held-out validation
+# data every retrain, then silently discarded in favor of a threshold
+# hardcoded separately in pipeline.py. Loading it here so a retrain's tuning
+# actually takes effect instead of being thrown away.
+BLOCK_THRESHOLD = DEFAULT_BLOCK_THRESHOLD
+if THRESHOLD_PATH.exists():
+    BLOCK_THRESHOLD = json.loads(THRESHOLD_PATH.read_text(encoding="utf-8")).get("hard_rule_threshold", DEFAULT_BLOCK_THRESHOLD)
 
 
 # Both trained models were fit on debit-shaped behavior only (device/location/

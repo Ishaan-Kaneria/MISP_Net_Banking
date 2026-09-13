@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .models import Account, Alert, AuditLog, Recommendation, Transaction, User, UserFeature, UserScore
-from .ml.fraud import fraud_score as model_fraud_score
+from .ml.fraud import BLOCK_THRESHOLD, fraud_score as model_fraud_score
 from .ml.segment import predict_segment
 from .rules import fraud_hard_rules, haversine_km, offer_rules
 
@@ -89,7 +89,16 @@ def run_pipeline(db: Session, user_id: str, payload, *, force_post: bool = False
     recent_debits = [t for t in history if t.direction == "debit" and comparable_time(t.ts) >= now - timedelta(minutes=2)]
     same_device = bool(user and user.device_id and payload.device_id == user.device_id)
     prior_debits = [float(t.amount) for t in history if t.direction == "debit" and t.status == "posted"]
-    typical_amount = median(prior_debits) if prior_debits else 1.0
+    # With no debit history yet, falling back to a ₹1 "typical" (as this used
+    # to) makes amount_vs_typical explode to hundreds or thousands for any
+    # real first payment (₹5,000 / ₹1 = 5000x) -- a value far outside
+    # anything the model was trained on (its training frame clips this ratio
+    # to [0.2, 18]), so it gets treated as an extreme outlier and pushes the
+    # score up for a transaction that is, by definition, this account's very
+    # first and has no actual "unusual for this user" signal to report yet.
+    # Falling back to the payment's own amount makes a brand-new account's
+    # first transaction read as neutral (ratio 1.0) instead of a false spike.
+    typical_amount = median(prior_debits) if prior_debits else float(payload.amount)
     amount_vs_typical = float(payload.amount) / max(typical_amount, 1.0)
     balance_ratio = float(payload.amount) / max(float(account.balance) if account else 1.0, 1.0)
     payee_frequency_30d = sum(t.payee == payload.payee and t.status == "posted" and comparable_time(t.ts) >= now - timedelta(days=30) for t in history)
@@ -108,7 +117,7 @@ def run_pipeline(db: Session, user_id: str, payload, *, force_post: bool = False
     insufficient_funds = payload.direction == "debit" and float(payload.amount) > current_balance
     if insufficient_funds:
         hard_reasons = hard_reasons + ["INSUFFICIENT_BALANCE"]
-    status = "posted" if force_post else ("blocked" if hard_reasons or fraud_score >= 0.82 else "posted")
+    status = "posted" if force_post else ("blocked" if hard_reasons or fraud_score >= BLOCK_THRESHOLD else "posted")
     transaction = Transaction(user_id=user_id, amount=payload.amount, direction=payload.direction,
                               payee=payload.payee, mcc=payload.mcc, lat=payload.lat, lng=payload.lng,
                               device_id=payload.device_id, ts=now, category=category, status=status, fraud_score=fraud_score)
