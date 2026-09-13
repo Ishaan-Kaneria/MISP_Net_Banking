@@ -26,6 +26,26 @@ _BACKGROUND_MERCHANTS = [
 ]
 
 
+def _seed_big_ticket_history(db, user: User, purchases: list[tuple[int, float, str, str]]) -> None:
+    """A handful of large, real-life one-off payments -- rent deposits,
+    appliances, a big annual premium, an electronics upgrade -- dated 35+
+    days ago, same as `_seed_lived_in_history`, so they sit in
+    `amount_vs_typical`'s all-time median (giving every account real
+    precedent for large amounts, which is exactly what the retrained fraud
+    model needed more of — see scripts/train_models.py) without touching
+    any segment's 30-day feature window or its story.
+
+    `purchases` is `(days_ago, amount, payee, category)`. Each entry uses
+    a distinct one-off payee by default (a big purchase usually isn't to
+    a payee you pay every week), which is also the more realistic --and
+    harder-- case for the fraud engine: a large amount with no repeat
+    history at all, not just a large amount to an already-familiar payee.
+    """
+    now = datetime.now(timezone.utc)
+    for days_ago, amount, payee, category in purchases:
+        db.add(Transaction(user_id=user.id, amount=amount, direction="debit", payee=payee, category=category, device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.05))
+
+
 def _seed_lived_in_history(db, user: User, *, months: int = 9) -> None:
     """Extra months of ordinary weekly spend, dated *before* the 30-day
     feature window every segment's story above is carefully tuned against
@@ -63,6 +83,10 @@ def _seed_saver_history(db, user: User) -> None:
     db.add(Transaction(user_id=user.id, amount=499, direction="debit", payee="Netflix", category="ENTERTAINMENT", device_id=user.device_id, ts=now - timedelta(days=10), status="posted", fraud_score=0.03))
 
     _seed_lived_in_history(db, user)
+    _seed_big_ticket_history(db, user, [
+        (58, 68000, "Croma Electronics", "UNKNOWN"),      # a new fridge -- a saver's real big-ticket buy
+        (140, 42000, "LIC Premium", "UNKNOWN"),           # annual insurance premium, paid once a year
+    ])
 
 
 def _seed_medical_history(db, user: User) -> None:
@@ -81,6 +105,9 @@ def _seed_medical_history(db, user: User) -> None:
         db.add(Transaction(user_id=user.id, amount=450 + days_ago * 8, direction="debit", payee="Zepto", category="UPI_GROCERY", device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.03))
 
     _seed_lived_in_history(db, user)
+    _seed_big_ticket_history(db, user, [
+        (45, 55000, "Apollo Hospital Billing", "HOSPITAL"),  # a bigger, earlier procedure -- outside the 30-day window this segment's story depends on
+    ])
 
 
 def _seed_first_job_history(db, user: User) -> None:
@@ -103,6 +130,9 @@ def _seed_first_job_history(db, user: User) -> None:
     db.add(Transaction(user_id=user.id, amount=199, direction="debit", payee="Netflix", category="ENTERTAINMENT", device_id=user.device_id, ts=now - timedelta(days=7), status="posted", fraud_score=0.03))
 
     _seed_lived_in_history(db, user)
+    _seed_big_ticket_history(db, user, [
+        (45, 25000, "New Apartment Deposit", "UNKNOWN"),  # a security deposit -- a very real first-job big-ticket cost
+    ])
 
 
 def _seed_marriage_history(db, user: User) -> None:
@@ -124,6 +154,10 @@ def _seed_marriage_history(db, user: User) -> None:
         db.add(Transaction(user_id=user.id, amount=amount, direction="debit", payee="Zepto", category="UPI_GROCERY", device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.03))
 
     _seed_lived_in_history(db, user)
+    _seed_big_ticket_history(db, user, [
+        (70, 150000, "Grand Wedding Hall", "UNKNOWN"),   # the venue booking deposit, months before the big day
+        (50, 95000, "Zaveri Jewellers", "UNKNOWN"),      # a larger jewellery order, ahead of the smaller one within her 30-day window
+    ])
 
 
 def _seed_high_velocity_history(db, user: User) -> None:
@@ -143,6 +177,9 @@ def _seed_high_velocity_history(db, user: User) -> None:
         db.add(Transaction(user_id=user.id, amount=120 + index * 35, direction="debit", payee=merchant, device_id=user.device_id, ts=now - timedelta(days=index % 6, hours=index), status="posted", fraud_score=0.03))
 
     _seed_lived_in_history(db, user)
+    _seed_big_ticket_history(db, user, [
+        (55, 62000, "Croma Electronics", "UNKNOWN"),  # even a high-velocity spender has the occasional big one-off
+    ])
 
 
 def _seed_baseline_history(db, user: User) -> None:
@@ -168,6 +205,9 @@ def _seed_baseline_history(db, user: User) -> None:
     db.add(Transaction(user_id=user.id, amount=9000, direction="debit", payee="Rent", device_id=user.device_id, ts=now - timedelta(days=8), status="posted", fraud_score=0.03))
 
     _seed_lived_in_history(db, user)
+    _seed_big_ticket_history(db, user, [
+        (50, 58000, "MakeMyTrip", "UNKNOWN"),  # an annual family vacation booking -- ordinary, occasional, large
+    ])
 
 
 def _seed_stress_history(db, user: User) -> None:
@@ -189,6 +229,9 @@ def _seed_stress_history(db, user: User) -> None:
         db.add(Transaction(user_id=user.id, amount=900 + days_ago * 15, direction="debit", payee="Upi_grocery", category="UPI_GROCERY", device_id=user.device_id, ts=now - timedelta(days=days_ago), status="posted", fraud_score=0.04))
 
     _seed_lived_in_history(db, user)
+    _seed_big_ticket_history(db, user, [
+        (110, 45000, "Car Repair Workshop", "UNKNOWN"),  # part of the real story: the emergency expense that started the cash-flow strain, before the EMIs stopped
+    ])
 
 
 # Per-segment history builders and a matching initial UserFeature snapshot
