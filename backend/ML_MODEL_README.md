@@ -32,8 +32,29 @@ The saved fraud artifacts use these features:
 - `balance_ratio`: amount divided by available balance, capped only by numerical safety at inference.
 - `is_new_payee`: no matching posted payee in the recent history.
 - `payee_frequency_30d`: matching posted payees in the last 30 days.
+- `risk_interaction`: `amount_vs_typical * balance_ratio * is_new_payee`, an engineered feature (not a raw signal). A disproportionately large payment that also drains a real share of the balance is only genuinely risky when it's *also* going to a brand-new payee; each factor alone is unremarkable. This product turns that three-way AND into one number a tree can split on directly, instead of requiring enough depth and enough matching training rows to rediscover the same interaction from the three raw features separately.
 
 The contextual features are computed before the transaction is posted. No future status, investigation result, or post-decision balance is used.
+
+### Known fix: cold-start distortion at large amounts (2026-09)
+
+Both the fraud classifier's own held-out evaluation *and* a live check against
+seeded personas confirmed a real bug: the synthetic training frame (see
+`scripts/train_models.py::fraud_frame`) put almost no mass above ₹50,000 in
+its *legitimate* population — the base lognormal distribution's tail rarely
+reaches there, and the only large-amount rows in ~24,000 training examples
+were the deliberately-injected fraud patterns. With no legitimate large-amount
+examples to learn from, the model extrapolated past its training range and
+scored **any** large payment as fraud-like, regardless of device, payee
+history, or anything else — a known, trusted payee's ₹50,000+ invoice was
+blocked purely on amount. Fixed by injecting a matched population of
+realistic large *legitimate* transactions (rent, tuition, a wedding vendor,
+an EMI lump sum) alongside a wider amount range for the *risky* new-payee
+pattern too, so the model has contrasting examples at every amount instead of
+only seeing large amounts in one class. Re-verified: a known payee at any
+amount up to ₹200,000 now posts normally when no other risk signal is
+present, while the new-payee/balance-drain pattern this feature exists to
+catch is still detected in 93% of matching held-out cases.
 
 ## Fraud Controls
 

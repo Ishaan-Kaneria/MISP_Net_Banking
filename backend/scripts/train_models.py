@@ -22,7 +22,7 @@ SEED = 20260912
 ROOT = Path(__file__).resolve().parents[1]
 MODEL_DIR = ROOT / "app" / "ml" / "models"
 REPORT_DIR = ROOT / "data" / "synthetic" / "reports"
-FRAUD_FEATURES = ("amount", "log_amount", "hour", "is_night", "km_from_last", "same_device", "velocity_2m", "amount_vs_typical", "balance_ratio", "is_new_payee", "payee_frequency_30d")
+FRAUD_FEATURES = ("amount", "log_amount", "hour", "is_night", "km_from_last", "same_device", "velocity_2m", "amount_vs_typical", "balance_ratio", "is_new_payee", "payee_frequency_30d", "risk_interaction")
 SEGMENT_FEATURES = ("spend_30d", "savings_rate", "missed_emi", "hospital_spend", "unique_payees", "salary_amount", "velocity", "entertainment_spend")
 
 
@@ -53,6 +53,48 @@ def fraud_frame(size: int = 24000) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     balance_ratio[::163] = 0.7
     new_payee[::163] = 1
     payee_frequency[::163] = 0
+    # This pattern's `amount` was left at whatever the base lognormal gave --
+    # almost always under ₹20,000 -- so the model only ever saw "new payee +
+    # high amount_vs_typical + high balance_ratio" fraud at small absolute
+    # amounts. Paired with the large-legit injection below (which only sets
+    # new_payee=0), that left "large amount" region of feature space with
+    # legit examples but no risky ones, so trees generalized the whole
+    # region toward "large == safe" -- undoing exactly the risk signal this
+    # pattern exists to teach. Spreading it across the same wide amount
+    # range as the legit injection gives the model matched contrasting
+    # pairs at every amount, so it has to actually use new_payee/
+    # amount_vs_typical/balance_ratio instead of amount alone.
+    risky_count = len(amount[::163])
+    amount[::163] = rng.uniform(3000, 150000, risky_count)
+
+    # Realistic large *legitimate* transactions -- rent, tuition, a wedding
+    # vendor payment, an EMI lump sum, a big-ticket purchase. Without this,
+    # the base lognormal population puts virtually no mass above ~₹50,000
+    # (its 4.4-sigma tail), so in 24,000 rows almost the only transactions
+    # the model ever saw above that size were the fraud-pattern injections
+    # above. It had no examples to learn that a large amount to an
+    # established payee, on the account's own device, with no other risk
+    # signal, is completely normal -- so at inference it extrapolated past
+    # its training range and treated "large amount" alone as fraud-like,
+    # regardless of context. This deliberately covers the same
+    # amount_vs_typical/balance_ratio range as the fraud rule below (values
+    # above 4 and 0.5 respectively) but with new_payee=0 -- an established
+    # payee -- which is exactly the distinction that rule already requires
+    # and the one the model needs many more examples of to actually learn.
+    large_legit = rng.random(size) < 0.07
+    legit_count = int(large_legit.sum())
+    amount[large_legit] = rng.uniform(30000, 200000, legit_count)
+    distance[large_legit] = rng.uniform(0, 15, legit_count)
+    same_device[large_legit] = 1
+    velocity[large_legit] = 0
+    watchlist[large_legit] = 0
+    hour[large_legit] = rng.integers(8, 21, legit_count)
+    is_night[large_legit] = 0
+    amount_vs_typical[large_legit] = rng.uniform(2, 12, legit_count)
+    balance_ratio[large_legit] = rng.uniform(0.1, 0.9, legit_count)
+    new_payee[large_legit] = 0
+    payee_frequency[large_legit] = rng.integers(3, 15, legit_count)
+
     fraud = (
         ((distance > 250) & (amount > 15000))
         | (velocity >= 5)
@@ -63,7 +105,14 @@ def fraud_frame(size: int = 24000) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     )
     borderline = (rng.random(size) < 0.012) & ~fraud
     fraud = fraud | borderline
-    features = np.column_stack((amount, np.log1p(amount), hour, is_night, distance, same_device, velocity, amount_vs_typical, balance_ratio, new_payee, payee_frequency)).astype(float)
+    # Same engineered interaction as app/ml/fraud.py::fraud_score -- gives
+    # the model one direct feature for "large-vs-typical AND balance-draining
+    # AND a brand-new payee" instead of requiring it to reconstruct that
+    # three-way AND from splits on the three raw features separately, which
+    # needs far more depth and far more matching training rows to learn
+    # reliably than a single engineered column does.
+    risk_interaction = amount_vs_typical * balance_ratio * new_payee
+    features = np.column_stack((amount, np.log1p(amount), hour, is_night, distance, same_device, velocity, amount_vs_typical, balance_ratio, new_payee, payee_frequency, risk_interaction)).astype(float)
     order = np.argsort(dates)
     return features[order], fraud.astype(int)[order], dates[order]
 
