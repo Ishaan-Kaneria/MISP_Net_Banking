@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🏦 MISP Bank
+# 🏦 MISP
 
 ### AI-Powered Hyper-Personalized Banking for Bharat
 
@@ -26,7 +26,7 @@
 
 Indian banks now have UPI, video KYC, and mobile apps — but the *experience* behind them is still one-size-fits-all. A salaried first-jobber, a stressed borrower who just missed an EMI, and someone saving for a wedding all see the **same generic pop-ups**, in the **same language**, with **no explanation** of why a payment got blocked or a loan got refused.
 
-**MISP Bank is a working prototype of the alternative**: every transaction runs through a real decision pipeline — hard fraud rules, a trained fraud classifier, and a behavioral-segmentation model — that decides in milliseconds whether to *post it, protect it, or personalize around it*, and can always explain exactly why, in the customer's own language, to a regulator or the customer themselves.
+**MISP is a working prototype of the alternative**: every transaction runs through a real decision pipeline — hard fraud rules, a trained fraud classifier, and a behavioral-segmentation model — that decides in milliseconds whether to *post it, protect it, or personalize around it*, and can always explain exactly why, in the customer's own language, to a regulator or the customer themselves.
 
 | Hackathon ask | What we built |
 |---|---|
@@ -355,6 +355,6 @@ Released under the **[MIT License](LICENSE)** — see the file for the full text
 
 <div align="center">
 
-**MISP Bank** — money that understands life.
+**MISP** — money that understands life.
 
 </div>

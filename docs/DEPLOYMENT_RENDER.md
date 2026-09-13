@@ -1,4 +1,4 @@
-# MISP Bank Deployment Guide: Render (simplest option)
+# MISP Deployment Guide: Render (simplest option)
 
 This is the fastest path to a live backend for a hackathon demo — no CLI,
 no separate database provider, no cloud IAM setup. Render reads

@@ -1,7 +1,7 @@
-# MISP Bank policy corpus
+# MISP policy corpus
 
 ## KYC
-MISP Bank uses mocked Aadhaar or PAN verification for the demo. Only a mock reference and consent record are retained. Consent is purpose limited and can be withdrawn.
+MISP uses mocked Aadhaar or PAN verification for the demo. Only a mock reference and consent record are retained. Consent is purpose limited and can be withdrawn.
 
 ## Grace period
 Customers under financial stress can request a 15-day grace period. Credit products are not upsold while a stress flag is active.

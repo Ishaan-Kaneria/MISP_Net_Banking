@@ -1,4 +1,4 @@
-# MISP Bank Deployment Guide: Neon or Supabase
+# MISP Deployment Guide: Neon or Supabase
 
 ## Recommendation
 

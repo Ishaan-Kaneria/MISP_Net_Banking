@@ -1,4 +1,4 @@
-# MISP Bank Project Completion Plan
+# MISP Project Completion Plan
 
 Date: 12 September 2026
 Repository: https://github.com/snehpatel05/HackOut-26.git
@@ -7,7 +7,7 @@ Current checkpoint: `c9bd102 Add Alembic database migrations`
 
 ## Executive Summary
 
-MISP Bank is a working hackathon vertical slice for hyper-personalized banking in Bharat. The repository contains a FastAPI backend, Next.js PWA, PostgreSQL/pgvector Docker stack, seeded personas, fraud scoring, life-stage classification, ethics rules, chat fallback, mock KYC, explainability, and a judge-facing transaction simulator.
+MISP is a working hackathon vertical slice for hyper-personalized banking in Bharat. The repository contains a FastAPI backend, Next.js PWA, PostgreSQL/pgvector Docker stack, seeded personas, fraud scoring, life-stage classification, ethics rules, chat fallback, mock KYC, explainability, and a judge-facing transaction simulator.
 
 The project is not yet submission-complete because the full stack has not been run on a machine with Node.js and Docker, and several production-grade requirements remain to be implemented or verified. The next milestone is runtime validation, followed by targeted completion of the missing architecture and quality gates.
 

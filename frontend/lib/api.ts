@@ -7,7 +7,7 @@ if (typeof window !== "undefined" && !process.env.NEXT_PUBLIC_API_URL) {
   // rebuilt afterwards. Without it, every deployed visitor's browser tries
   // to reach *their own* http://localhost:8000, which almost never exists.
   console.warn(
-    "[MISP Bank] NEXT_PUBLIC_API_URL is not set — falling back to http://localhost:8000. " +
+    "[MISP] NEXT_PUBLIC_API_URL is not set — falling back to http://localhost:8000. " +
     "In a deployed build this will fail for every visitor. Set it in your hosting " +
     "provider's environment variables and redeploy."
   );
@@ -45,7 +45,7 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
     // own message for most of these is the unhelpful literal "Failed to
     // fetch" — surface something a user can act on instead, and keep the
     // real cause in the console for debugging.
-    console.error(`[MISP Bank] Network error calling ${path}:`, cause);
+    console.error(`[MISP] Network error calling ${path}:`, cause);
     const timedOut = cause instanceof DOMException && cause.name === "AbortError";
     throw new ApiError(
       timedOut

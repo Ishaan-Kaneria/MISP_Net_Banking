@@ -224,7 +224,7 @@ def main() -> None:
     write_json("edge_cases.json", edge)
     write_json("expected_results.json", {"fraud_cases": fraud, "segment_cases": segments, "offer_cases": offers})
     (OUT / "data_dictionary.md").write_text("# Synthetic data dictionary\n\nAll records are deterministic synthetic fixtures. Fraud thresholds are evaluated by `backend/app/rules.py`. Model features are available at decision time; labels and expected fields are test-only targets.\n", encoding="utf-8")
-    (OUT / "README.md").write_text("# MISP Bank synthetic coverage data\n\nRun `python scripts/generate_synthetic_data.py` from `backend`. The generator covers every hard fraud rule, exact threshold boundaries, normal and blocked outcomes, all seven segments, ethics offers, and representative API validation cases. It uses seed 20260912 and never accesses external data.\n", encoding="utf-8")
+    (OUT / "README.md").write_text("# MISP synthetic coverage data\n\nRun `python scripts/generate_synthetic_data.py` from `backend`. The generator covers every hard fraud rule, exact threshold boundaries, normal and blocked outcomes, all seven segments, ethics offers, and representative API validation cases. It uses seed 20260912 and never accesses external data.\n", encoding="utf-8")
     print(f"Generated {len(customers)} customers, {len(transactions)} transactions, {len(fraud)} fraud cases, {len(segments)} segment cases, {len(offers)} offer cases and {len(api_cases())} API cases in {OUT}")
     print("Fraud rules covered:", sorted({reason for case in fraud for reason in case["hard_reasons"]}))
     print("Segments covered:", ", ".join(sorted({row["expected_segment"] for row in segments})))

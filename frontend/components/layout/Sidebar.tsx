@@ -15,7 +15,7 @@ export function Sidebar({
       <div className="flex items-center gap-2.5 px-2.5 pb-7 text-base font-bold tracking-wide text-white max-md:pb-0">
         {/* eslint-disable-next-line @next/next/no-img-element -- a tiny static brand mark, not worth next/image's runtime for */}
         <img src="/logo.svg" alt="" width={30} height={30} className="rounded-lg" />
-        <span>MISP BANK</span>
+        <span>MISP</span>
       </div>
 
       <div className="flex items-center gap-2.5 border-y border-white/10 px-2.5 py-3.5 max-md:hidden">

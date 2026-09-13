@@ -1,4 +1,4 @@
-# Render Blueprint for the MISP Bank backend.
+# Render Blueprint for the MISP backend.
 #
 # Deploy: Render dashboard -> New -> Blueprint -> select this repo. Render
 # reads this file automatically and provisions both resources below.

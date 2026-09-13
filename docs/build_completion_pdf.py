@@ -37,14 +37,14 @@ def footer(canvas, doc):
     canvas.line(16 * mm, 13 * mm, A4[0] - 16 * mm, 13 * mm)
     canvas.setFont("Helvetica", 7.5)
     canvas.setFillColor(colors.HexColor("#586a73"))
-    canvas.drawString(16 * mm, 8 * mm, "MISP Bank | Project Completion Plan")
+    canvas.drawString(16 * mm, 8 * mm, "MISP | Project Completion Plan")
     canvas.drawRightString(A4[0] - 16 * mm, 8 * mm, f"Page {doc.page}")
     canvas.restoreState()
 
 
 def build():
     lines = SOURCE.read_text(encoding="utf-8").splitlines()
-    story = [Spacer(1, 25 * mm), Paragraph("MISP BANK", styles["CoverTitle"]), Paragraph("PROJECT COMPLETION PLAN", styles["CoverSub"]), Paragraph("What is complete, what remains, and the exact path to a submission-ready build.", styles["BodyCustom"]), Spacer(1, 8 * mm)]
+    story = [Spacer(1, 25 * mm), Paragraph("MISP", styles["CoverTitle"]), Paragraph("PROJECT COMPLETION PLAN", styles["CoverSub"]), Paragraph("What is complete, what remains, and the exact path to a submission-ready build.", styles["BodyCustom"]), Spacer(1, 8 * mm)]
     in_code = False
     code_lines = []
     bullets = []
@@ -85,7 +85,7 @@ def build():
             story.append(Paragraph(inline(line), styles["BodyCustom"]))
     if bullets:
         story.append(ListFlowable(bullets, bulletType="bullet", start="circle", leftIndent=14))
-    doc = SimpleDocTemplate(str(OUTPUT), pagesize=A4, rightMargin=16 * mm, leftMargin=16 * mm, topMargin=16 * mm, bottomMargin=18 * mm, title="MISP Bank Project Completion Plan", author="MISP Bank")
+    doc = SimpleDocTemplate(str(OUTPUT), pagesize=A4, rightMargin=16 * mm, leftMargin=16 * mm, topMargin=16 * mm, bottomMargin=18 * mm, title="MISP Project Completion Plan", author="MISP")
     doc.build(story, onFirstPage=footer, onLaterPages=footer)
 
 

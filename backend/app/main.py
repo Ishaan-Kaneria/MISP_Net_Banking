@@ -16,7 +16,7 @@ from .schemas import ChatRequest, HealthResponse, KycRequest, LoginRequest, Tran
 from .security import create_token, decode_token, hash_pin, verify_pin
 from .seed import seed
 
-app = FastAPI(title="MISP Bank", version="0.1.0")
+app = FastAPI(title="MISP", version="0.1.0")
 app.add_middleware(CORSMiddleware, allow_origins=[x.strip() for x in settings.cors_origins.split(",")], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 

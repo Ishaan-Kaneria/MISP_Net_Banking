@@ -31,13 +31,13 @@ def footer(canvas, doc):
     canvas.line(16 * mm, 13 * mm, A4[0] - 16 * mm, 13 * mm)
     canvas.setFont("Helvetica", 7.5)
     canvas.setFillColor(colors.HexColor("#586a73"))
-    canvas.drawString(16 * mm, 8 * mm, "MISP Bank | Neon and Supabase Deployment")
+    canvas.drawString(16 * mm, 8 * mm, "MISP | Neon and Supabase Deployment")
     canvas.drawRightString(A4[0] - 16 * mm, 8 * mm, f"Page {doc.page}")
     canvas.restoreState()
 
 
 def build():
-    story = [Spacer(1, 18 * mm), Paragraph("MISP BANK", styles["TitleCustom"]), Paragraph("NEON / SUPABASE DEPLOYMENT GUIDE", styles["H1Custom"]), Paragraph("Exact setup, connection, deployment, verification, and cost-safety steps.", styles["Meta"])]
+    story = [Spacer(1, 18 * mm), Paragraph("MISP", styles["TitleCustom"]), Paragraph("NEON / SUPABASE DEPLOYMENT GUIDE", styles["H1Custom"]), Paragraph("Exact setup, connection, deployment, verification, and cost-safety steps.", styles["Meta"])]
     in_code = False
     code = []
     bullets = []
@@ -71,7 +71,7 @@ def build():
             story.append(Paragraph(inline(line), styles["BodyCustom"]))
     if bullets:
         story.append(ListFlowable(bullets, bulletType="bullet", leftIndent=14))
-    doc = SimpleDocTemplate(str(OUTPUT), pagesize=A4, rightMargin=16 * mm, leftMargin=16 * mm, topMargin=15 * mm, bottomMargin=18 * mm, title="MISP Bank Neon Supabase Deployment Guide", author="MISP Bank")
+    doc = SimpleDocTemplate(str(OUTPUT), pagesize=A4, rightMargin=16 * mm, leftMargin=16 * mm, topMargin=15 * mm, bottomMargin=18 * mm, title="MISP Neon Supabase Deployment Guide", author="MISP")
     doc.build(story, onFirstPage=footer, onLaterPages=footer)
     print(OUTPUT)
 
