@@ -181,7 +181,7 @@ function App() {
                 </button>
               )}
               <p className="text-[11px] font-bold uppercase tracking-widest text-primary">{copy.personal.toUpperCase()}</p>
-              <h1 className="gradient-text mt-2 text-[clamp(28px,4vw,40px)] font-bold leading-tight">
+              <h1 className="mt-2 text-[clamp(28px,4vw,40px)] font-bold leading-tight text-navy">
                 {view === "Overview" ? `${copy.morning}, ${dashboard.user.name.split(" ")[0]}` : viewLabel}
               </h1>
               <p className="max-w-xl leading-relaxed text-muted">

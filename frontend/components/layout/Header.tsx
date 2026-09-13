@@ -18,9 +18,12 @@ export function Header({
         <span className="hidden text-xs text-[#64778e] md:inline">{copy.personal} / {view === "Offers" ? copy.recommendations : viewLabel}</span>
       </div>
       <div className="flex items-center gap-3 md:gap-4">
-        <NotificationBell alerts={alerts} />
-        <span className="hidden h-6 w-px bg-border md:block" />
+        {/* Informational status first, then controls, then the one icon a
+            user actually acts on (notifications) last — the sidebar no
+            longer repeats this "protected" messaging on its own, so this is
+            the single place it lives. */}
         <span className="hidden items-center gap-1.5 text-xs font-medium text-primary md:flex"><ShieldCheck size={14} /> {copy.secure}</span>
+        <span className="hidden h-6 w-px bg-border md:block" />
         <div className="flex gap-0.5 rounded-md border border-border bg-paper p-0.5">
           {(["en", "hi", "gu"] as const).map(code => (
             <button key={code} onClick={() => setLanguage(code)}
@@ -29,6 +32,8 @@ export function Header({
             </button>
           ))}
         </div>
+        <span className="h-6 w-px bg-border" />
+        <NotificationBell alerts={alerts} />
       </div>
     </header>
   );

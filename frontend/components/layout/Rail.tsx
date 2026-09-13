@@ -6,11 +6,23 @@ import { money } from "../../lib/types";
 import { computeAccountHealth } from "../../lib/health";
 import type { TranslationCopy } from "../../lib/translations";
 
-function RailSection({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
+// Each panel gets its own accent color (a top border strip plus a matching
+// icon chip) so the rail reads as distinct, purpose-built cards at a glance
+// -- the same convention professional dashboards (Stripe, Plaid) use instead
+// of an unbroken column of identical-looking white boxes.
+const ACCENTS = {
+  gold: { border: "border-t-gold", chip: "bg-gold-light text-gold" },
+  primary: { border: "border-t-primary", chip: "bg-primary-light text-primary" },
+  neutral: { border: "border-t-[#c7d3e6]", chip: "bg-paper text-[#5c7291]" },
+} as const;
+
+function RailSection({ title, icon, accent, children }: { title: string; icon: React.ReactNode; accent: keyof typeof ACCENTS; children: React.ReactNode }) {
+  const style = ACCENTS[accent];
   return (
-    <section className="mt-3.5 rounded-xl border border-border bg-white p-4.5 p-[18px] shadow-[0_2px_8px_rgba(10,46,92,.04)]">
-      <div className="mb-2.5 flex items-center justify-between">
-        <span className="flex items-center gap-1.5 text-xs font-bold text-navy">{icon} {title}</span>
+    <section className={`mt-3.5 rounded-xl border border-t-2 border-border bg-white p-[18px] shadow-[0_2px_8px_rgba(10,46,92,.04)] ${style.border}`}>
+      <div className="mb-2.5 flex items-center gap-2">
+        <span className={`grid h-6 w-6 flex-none place-items-center rounded-md ${style.chip}`}>{icon}</span>
+        <span className="text-xs font-bold text-navy">{title}</span>
       </div>
       {children}
     </section>
@@ -19,7 +31,7 @@ function RailSection({ title, icon, children }: { title: string; icon: React.Rea
 
 export function RailAlerts({ data, copy }: { data: Dashboard; copy: TranslationCopy }) {
   return (
-    <RailSection title={copy.alerts} icon={<AlertCircle size={15} />}>
+    <RailSection title={copy.alerts} icon={<AlertCircle size={13} />} accent="gold">
       {data.alerts.length ? data.alerts.slice(0, 3).map(alert => (
         <div key={alert.id} className="flex items-start gap-2.5 border-t border-[#edf1f8] py-3 first:border-t-0">
           <span className={`grid h-7 w-7 flex-none place-items-center rounded-md ${alert.type === "fraud" ? "bg-danger-light text-danger" : "bg-gold-light text-gold"}`}>
@@ -39,7 +51,7 @@ export function RailAlerts({ data, copy }: { data: Dashboard; copy: TranslationC
 
 export function RailOffers({ data, copy }: { data: Dashboard; copy: TranslationCopy }) {
   return (
-    <RailSection title={copy.recommendations} icon={<TrendingUp size={15} />}>
+    <RailSection title={copy.recommendations} icon={<TrendingUp size={13} />} accent="primary">
       {data.offers.length ? data.offers.slice(0, 3).map(offer => (
         <div key={offer.id} className="flex items-center gap-2.5 border-t border-[#edf1f8] py-3 text-muted first:border-t-0">
           <span className="grid h-7 w-7 flex-none place-items-center rounded-md bg-primary-light text-primary"><IndianRupee size={15} /></span>
@@ -57,7 +69,7 @@ export function RailOffers({ data, copy }: { data: Dashboard; copy: TranslationC
 
 export function RailActivity({ data, copy }: { data: Dashboard; copy: TranslationCopy }) {
   return (
-    <RailSection title={copy.activity} icon={<Clock3 size={15} />}>
+    <RailSection title={copy.activity} icon={<Clock3 size={13} />} accent="neutral">
       {data.transactions.slice(0, 5).map(txn => (
         <div key={txn.id} className="flex items-center gap-2 border-t border-[#edf1f8] py-2.5 first:border-t-0">
           <span className={`grid h-[23px] w-[23px] flex-none place-items-center rounded text-sm font-bold ${txn.status === "blocked" ? "bg-danger-light text-danger" : "bg-primary-light text-primary"}`}>
@@ -75,9 +87,9 @@ export function RailActivity({ data, copy }: { data: Dashboard; copy: Translatio
 }
 
 const HEALTH_STYLES = {
-  good: { dot: "bg-[#6fc06f]", bar: "bg-primary", title: (copy: TranslationCopy) => copy.lookingGood, text: (copy: TranslationCopy) => copy.stable },
-  attention: { dot: "bg-gold", bar: "bg-gold", title: (copy: TranslationCopy) => copy.attentionMode, text: (copy: TranslationCopy) => copy.attentionText },
-  support: { dot: "bg-danger", bar: "bg-danger", title: (copy: TranslationCopy) => copy.supportMode, text: (copy: TranslationCopy) => copy.support },
+  good: { dot: "bg-[#6fc06f]", bar: "bg-primary", border: "border-t-primary", title: (copy: TranslationCopy) => copy.lookingGood, text: (copy: TranslationCopy) => copy.stable },
+  attention: { dot: "bg-gold", bar: "bg-gold", border: "border-t-gold", title: (copy: TranslationCopy) => copy.attentionMode, text: (copy: TranslationCopy) => copy.attentionText },
+  support: { dot: "bg-danger", bar: "bg-danger", border: "border-t-danger", title: (copy: TranslationCopy) => copy.supportMode, text: (copy: TranslationCopy) => copy.support },
 } as const;
 
 export function RailAccount({ data, copy }: { data: Dashboard; copy: TranslationCopy }) {
@@ -85,11 +97,13 @@ export function RailAccount({ data, copy }: { data: Dashboard; copy: Translation
   // and live fraud/stress alerts — replaces a bar that was hardcoded to
   // exactly 48% or 78% off the stress flag alone and never moved for any
   // other reason, so it looked identical no matter what was actually
-  // happening on the account.
+  // happening on the account. This card leads the rail (it's the account's
+  // single most important status signal), so its top-border accent sets the
+  // color language the panels below it repeat.
   const health = computeAccountHealth(data);
   const style = HEALTH_STYLES[health.tier];
   return (
-    <div className="rounded-xl border border-border bg-white p-[18px] shadow-[0_2px_8px_rgba(10,46,92,.04)]">
+    <div className={`rounded-xl border border-t-2 border-border bg-white p-[18px] shadow-[0_2px_8px_rgba(10,46,92,.04)] ${style.border}`}>
       <div className="flex justify-between text-[10px] font-bold tracking-widest text-muted">
         <span>{copy.accountHealth.toUpperCase()}</span>
         <span className={`inline-block h-1.5 w-1.5 rounded-full ${style.dot}`} />

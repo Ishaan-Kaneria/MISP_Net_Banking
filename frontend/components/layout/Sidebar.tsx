@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, ShieldCheck, type LucideIcon } from "lucide-react";
+import { ChevronRight, type LucideIcon } from "lucide-react";
 import type { View } from "../../lib/types";
 
 export function Sidebar({
@@ -18,7 +18,7 @@ export function Sidebar({
       </div>
 
       <div className="flex items-center gap-2.5 border-y border-white/10 px-2.5 py-3.5 max-md:hidden">
-        <span className="grid h-8 w-8 place-items-center rounded-full gradient-brand font-bold text-white">{name.slice(0, 1)}</span>
+        <span className="grid h-8 w-8 place-items-center rounded-full bg-[#d9e8ff] font-bold text-navy-deep">{name.slice(0, 1)}</span>
         <span className="min-w-0">
           <strong className="block truncate max-w-[135px] text-xs text-white">{name}</strong>
           <small className="mt-0.5 block truncate max-w-[135px] text-[10px] uppercase tracking-wide text-[#9fb4cd]">{segment.replaceAll("_", " ")}</small>
@@ -31,7 +31,7 @@ export function Sidebar({
           <button
             key={label} onClick={() => onNavigate(label)}
             className={`flex w-full items-center gap-2.5 rounded-md px-2.5 py-2.5 text-left text-xs transition-colors max-md:w-auto max-md:flex-none max-md:px-2.5 max-md:py-2 ${
-              view === label ? "bg-white/10 text-white shadow-[inset_3px_0_0_#ec4899] max-md:shadow-[inset_0_-2px_0_#ec4899]" : "text-[#aec1da] hover:bg-white/10 hover:text-white"
+              view === label ? "bg-white/10 text-white shadow-[inset_3px_0_0_#5b9bf5] max-md:shadow-[inset_0_-2px_0_#5b9bf5]" : "text-[#aec1da] hover:bg-white/10 hover:text-white"
             }`}
           >
             <Icon size={17} /> <span>{text}</span> {view === label && <ChevronRight size={14} className="ml-auto max-md:hidden" />}
@@ -39,12 +39,11 @@ export function Sidebar({
         ))}
       </nav>
 
-      <p className="ml-2.5 mt-8 text-[9px] font-bold tracking-widest text-[#86a0bd] max-md:hidden">SECURITY</p>
-      <div className="mx-2.5 flex items-start gap-2.5 py-2.5 text-fuchsia max-md:hidden">
-        <ShieldCheck size={16} />
-        <span><strong className="block text-[11px] text-[#dfe9f7]">Protected account</strong><small className="mt-0.5 block text-[10px] text-[#86a0bd]">Monitoring is active</small></span>
-      </div>
-      <button onClick={onSignOut} className="mt-auto w-full rounded-md px-2.5 py-2.5 text-left text-xs text-[#a6bad4] hover:bg-white/10 hover:text-white max-md:hidden">
+      {/* The "protected/monitored" message used to be repeated here and in
+          the header's secure badge -- one screen, two places saying the
+          same thing. It now lives once, in the header, so this footer is
+          just account-level actions. */}
+      <button onClick={onSignOut} className="mt-auto w-full rounded-md border-t border-white/10 px-2.5 pb-1 pt-3.5 text-left text-xs text-[#a6bad4] hover:bg-white/10 hover:text-white max-md:hidden">
         Sign out
       </button>
     </aside>

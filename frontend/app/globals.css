@@ -17,21 +17,3 @@
    a single Tailwind utility without an arbitrary-value repeat per usage. */
 .gradient-navy { background: linear-gradient(180deg, theme('colors.navy.DEFAULT') 0%, theme('colors.navy.deep') 100%); }
 .gradient-navy-diagonal { background: linear-gradient(135deg, theme('colors.navy.DEFAULT') 0%, theme('colors.navy.deep') 100%); }
-
-/* The vibrant-neobank brand gradient: violet -> fuchsia -> orange, used for
-   hero surfaces, primary CTAs and the balance card. text-transparent +
-   bg-clip-text on .gradient-text turns it into a gradient headline. */
-.gradient-brand { background: linear-gradient(115deg, #7c3aed 0%, #ec4899 55%, #fb923c 100%); }
-.gradient-text { background: linear-gradient(115deg, #7c3aed 0%, #ec4899 60%, #fb923c 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
-
-/* Soft, blurred color blobs for decorative backgrounds (login hero, empty
-   states) -- pure CSS, no image assets, fixed positions so they read as
-   ambient light rather than distracting shapes. Each usage site sizes/
-   positions its own absolutely-positioned div with this class. */
-.blob {
-  position: absolute;
-  border-radius: 9999px;
-  filter: blur(60px);
-  opacity: .55;
-  pointer-events: none;
-}
