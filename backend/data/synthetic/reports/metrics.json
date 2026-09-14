@@ -3,73 +3,119 @@
     "train_rows": 13032,
     "validation_rows": 3240,
     "test_rows": 7728,
-    "fraud_rate_test": 0.052924430641821944,
-    "threshold": 0.49999999999999994,
-    "precision": 0.9787985865724381,
-    "recall": 0.6772616136919315,
-    "f1": 0.8005780346820809,
-    "pr_auc": 0.7213967926097918,
-    "roc_auc": 0.8346695190967275
+    "fraud_rate_test": 0.0542184265010352,
+    "threshold": 0.42999999999999994,
+    "precision": 0.9777777777777777,
+    "recall": 0.630071599045346,
+    "f1": 0.7663280116110305,
+    "pr_auc": 0.6802250276947067,
+    "roc_auc": 0.8103696328879522
   },
   "segmentation": {
-    "train_rows": 3360,
-    "test_rows": 840,
-    "macro_f1": 0.7900350453498858,
-    "report": {
+    "model_label_space": [
+      "FIRST_JOB",
+      "MARRIAGE",
+      "BASELINE"
+    ],
+    "guarded_segments": [
+      "STRESS",
+      "MEDICAL",
+      "HIGH_VELOCITY",
+      "SAVER"
+    ],
+    "train_rows": 1440,
+    "test_rows": 360,
+    "guarded_share_of_customers": 0.5714285714285714,
+    "macro_f1": 0.9638732088580113,
+    "pipeline_macro_f1": 0.9845170895105763,
+    "pipeline_report": {
+      "BASELINE": {
+        "precision": 0.9652173913043478,
+        "recall": 0.925,
+        "f1-score": 0.9446808510638298,
+        "support": 120.0
+      },
       "FIRST_JOB": {
-        "precision": 0.90625,
+        "precision": 0.928,
         "recall": 0.9666666666666667,
-        "f1-score": 0.9354838709677419,
-        "support": 120.0
-      },
-      "MARRIAGE": {
-        "precision": 0.6936936936936937,
-        "recall": 0.6416666666666667,
-        "f1-score": 0.6666666666666666,
-        "support": 120.0
-      },
-      "MEDICAL": {
-        "precision": 0.8,
-        "recall": 0.7666666666666667,
-        "f1-score": 0.7829787234042553,
-        "support": 120.0
-      },
-      "STRESS": {
-        "precision": 0.975609756097561,
-        "recall": 1.0,
-        "f1-score": 0.9876543209876543,
-        "support": 120.0
-      },
-      "SAVER": {
-        "precision": 0.7868852459016393,
-        "recall": 0.8,
-        "f1-score": 0.7933884297520661,
+        "f1-score": 0.9469387755102041,
         "support": 120.0
       },
       "HIGH_VELOCITY": {
-        "precision": 0.7416666666666667,
-        "recall": 0.7416666666666667,
-        "f1-score": 0.7416666666666667,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
         "support": 120.0
       },
-      "BASELINE": {
-        "precision": 0.6198347107438017,
-        "recall": 0.625,
-        "f1-score": 0.6224066390041494,
+      "MARRIAGE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
         "support": 120.0
       },
-      "accuracy": 0.7916666666666666,
+      "MEDICAL": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 120.0
+      },
+      "SAVER": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 120.0
+      },
+      "STRESS": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 120.0
+      },
+      "accuracy": 0.9845238095238096,
       "macro avg": {
-        "precision": 0.7891342961576232,
-        "recall": 0.7916666666666666,
-        "f1-score": 0.7900350453498858,
+        "precision": 0.9847453416149069,
+        "recall": 0.9845238095238095,
+        "f1-score": 0.9845170895105763,
         "support": 840.0
       },
       "weighted avg": {
-        "precision": 0.7891342961576232,
-        "recall": 0.7916666666666666,
-        "f1-score": 0.7900350453498858,
+        "precision": 0.9847453416149069,
+        "recall": 0.9845238095238096,
+        "f1-score": 0.9845170895105764,
         "support": 840.0
+      }
+    },
+    "report": {
+      "FIRST_JOB": {
+        "precision": 0.928,
+        "recall": 0.9666666666666667,
+        "f1-score": 0.9469387755102041,
+        "support": 120.0
+      },
+      "MARRIAGE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 120.0
+      },
+      "BASELINE": {
+        "precision": 0.9652173913043478,
+        "recall": 0.925,
+        "f1-score": 0.9446808510638298,
+        "support": 120.0
+      },
+      "accuracy": 0.9638888888888889,
+      "macro avg": {
+        "precision": 0.9644057971014494,
+        "recall": 0.9638888888888889,
+        "f1-score": 0.9638732088580113,
+        "support": 360.0
+      },
+      "weighted avg": {
+        "precision": 0.9644057971014494,
+        "recall": 0.9638888888888889,
+        "f1-score": 0.9638732088580113,
+        "support": 360.0
       }
     }
   }

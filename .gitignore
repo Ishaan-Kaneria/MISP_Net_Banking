@@ -1,6 +1,6 @@
 backend/.env
 backend/.venv/
-backend/arthai.db
+backend/mispbank.db
 backend/__pycache__/
 backend/app/__pycache__/
 frontend/node_modules/

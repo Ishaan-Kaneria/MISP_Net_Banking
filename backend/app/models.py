@@ -89,6 +89,13 @@ class Alert(Base):
     type: Mapped[str] = mapped_column(String(20))
     message_hi: Mapped[str] = mapped_column(Text)
     message_en: Mapped[str] = mapped_column(Text)
+    # Nullable, unlike the other two: existing rows created before this
+    # column existed have no Gujarati text to backfill (there's no source to
+    # translate from at the DB layer), so the API and frontend both fall
+    # back to message_en for those. Every alert created going forward always
+    # sets it (see pipeline.py), matching the trilingual EN/HI/GU coverage
+    # the rest of the app (chat, offers, translations.ts) already has.
+    message_gu: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 

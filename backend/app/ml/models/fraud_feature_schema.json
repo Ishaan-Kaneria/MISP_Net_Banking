@@ -10,7 +10,8 @@
     "amount_vs_typical",
     "balance_ratio",
     "is_new_payee",
-    "payee_frequency_30d"
+    "payee_frequency_30d",
+    "risk_interaction"
   ],
   "model": "RandomForestClassifier",
   "version": "synthetic-20260912-context-v2"

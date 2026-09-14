@@ -1,10 +1,10 @@
-# Render Blueprint for the Arth-AI backend.
+# Render Blueprint for the MISP backend.
 #
 # Deploy: Render dashboard -> New -> Blueprint -> select this repo. Render
 # reads this file automatically and provisions both resources below.
 #
 # After the first deploy:
-#   1. Copy the web service's URL (https://arthai-backend-XXXX.onrender.com).
+#   1. Copy the web service's URL (https://mispbank-backend-XXXX.onrender.com).
 #   2. Set NEXT_PUBLIC_API_URL to that URL wherever the frontend is hosted.
 #   3. Come back to this service's environment settings and set CORS_ORIGINS
 #      to the frontend's exact URL (no trailing slash), then redeploy.
@@ -15,14 +15,14 @@
 # after a while will be slow (cold start) while it wakes back up. That's
 # normal for a free-tier demo deployment, not a bug.
 databases:
-  - name: arthai-db
+  - name: mispbank-db
     plan: free
-    databaseName: arthai
-    user: arthai
+    databaseName: mispbank
+    user: mispbank
 
 services:
   - type: web
-    name: arthai-backend
+    name: mispbank-backend
     runtime: docker
     plan: free
     dockerfilePath: ./backend/Dockerfile
@@ -31,7 +31,7 @@ services:
     envVars:
       - key: DATABASE_URL
         fromDatabase:
-          name: arthai-db
+          name: mispbank-db
           property: connectionString
       - key: JWT_SECRET
         generateValue: true

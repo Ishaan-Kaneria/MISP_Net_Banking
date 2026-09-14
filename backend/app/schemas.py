@@ -47,6 +47,7 @@ class TransactionResponse(BaseModel):
     fraud_score: float
     category: str
     alert_ids: list[str] = []
+    fired_rules: list[str] = []
 
 
 class HealthResponse(BaseModel):

@@ -1,4 +1,4 @@
-# Arth-AI Deployment Guide: Render (simplest option)
+# MISP Deployment Guide: Render (simplest option)
 
 This is the fastest path to a live backend for a hackathon demo — no CLI,
 no separate database provider, no cloud IAM setup. Render reads
@@ -10,16 +10,16 @@ database together from one blueprint.
 1. Push this repo (or your fork) to GitHub if it isn't already there.
 2. Open `https://dashboard.render.com` -> **New** -> **Blueprint**.
 3. Select this repository. Render detects `render.yaml` automatically and
-   shows two resources: the `arthai-backend` web service and the
-   `arthai-db` Postgres database.
+   shows two resources: the `mispbank-backend` web service and the
+   `mispbank-db` Postgres database.
 4. Click **Apply**. First deploy takes a few minutes (Postgres provisions,
    then the Docker image builds and `alembic upgrade head` runs against it
    before the API starts).
 5. Once live, copy the service URL — something like
-   `https://arthai-backend-xxxx.onrender.com`. Confirm it with:
+   `https://mispbank-backend-xxxx.onrender.com`. Confirm it with:
 
 ```text
-https://arthai-backend-xxxx.onrender.com/health
+https://mispbank-backend-xxxx.onrender.com/health
 ```
 
 Free-plan services spin down after inactivity; the first request after a
@@ -28,7 +28,7 @@ quiet period will be slow while it wakes up. That's expected, not a bug.
 ### Optional: live chatbot replies
 
 By default `/chat` falls back to built-in canned responses (no external
-call). To use Gemini instead, open the `arthai-backend` service in Render
+call). To use Gemini instead, open the `mispbank-backend` service in Render
 -> **Environment** -> set `GEMINI_API_KEY` to a key from
 `https://aistudio.google.com/app/apikey`, then redeploy.
 
@@ -39,7 +39,7 @@ call). To use Gemini instead, open the `arthai-backend` service in Render
    project environment variable), or in `frontend/.env.local` for a local
    build.
 2. Deploy or rebuild the frontend, and copy its resulting URL.
-3. Back in Render, open `arthai-backend` -> **Environment** -> set
+3. Back in Render, open `mispbank-backend` -> **Environment** -> set
    `CORS_ORIGINS` to that exact frontend URL (no trailing slash) -> save,
    which triggers a redeploy.
 

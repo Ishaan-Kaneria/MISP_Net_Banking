@@ -1,6 +1,15 @@
 from app.rules import fraud_hard_rules, offer_rules
 from app.ml.fraud import fraud_score
 from app.ml.segment import predict_segment
+from app.llm import build_system_instruction, normalize_language
+
+
+def test_multilingual_chat_uses_supported_language_and_script_guidance():
+    assert normalize_language("hi-IN") == "hi"
+    assert normalize_language("gu_IN") == "gu"
+    assert normalize_language("unsupported") == "en"
+    assert "Devanagari" in build_system_instruction("hi", False)
+    assert "Gujarati script" in build_system_instruction("gu", False)
 
 
 def test_night_geo_high_value_is_blocked():
